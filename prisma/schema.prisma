@@ -59,11 +59,13 @@ model Project {
   files FileNode[]
   backups Backup[]
   runtimeCommands RuntimeCommand[]
+  runtimeEvents RuntimeEvent[]
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 }
 enum RuntimeCommandType { RESTART STOP }
 enum RuntimeCommandStatus { QUEUED RUNNING SUCCEEDED FAILED }
+enum RuntimeEventType { HEALTH_FAILURE AUTO_HEAL_STARTED AUTO_HEAL_SUCCEEDED AUTO_HEAL_FAILED MANUAL_RESTART MANUAL_STOP }
 
 model RuntimeCommand {
   id String @id @default(cuid())
@@ -83,6 +85,19 @@ model RuntimeCommand {
   finishedAt DateTime?
   @@index([projectId,createdAt])
   @@index([status,createdAt])
+}
+
+model RuntimeEvent {
+  id String @id @default(cuid())
+  projectId String
+  project Project @relation(fields:[projectId], references:[id], onDelete:Cascade)
+  serverId String?
+  server Server? @relation(fields:[serverId], references:[id], onDelete:SetNull)
+  type RuntimeEventType
+  message String
+  createdAt DateTime @default(now())
+  @@index([projectId,createdAt])
+  @@index([type,createdAt])
 }
 
 model Deployment {
@@ -181,6 +196,7 @@ model Server {
   agentVersion String?
   deployments Deployment[]
   runtimeCommands RuntimeCommand[]
+  runtimeEvents RuntimeEvent[]
 }
 
 enum DatabaseEngine { POSTGRESQL MYSQL REDIS }
