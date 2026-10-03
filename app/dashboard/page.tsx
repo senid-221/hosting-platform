@@ -1,15 +1,22 @@
 import { redirect } from "next/navigation";
 import { getCurrentUser } from "@/lib/auth";
-
-const services = [
-  ["Websites","4","Online websites"],
-  ["Domains","7","Managed domains"],
-  ["Databases","5","Active databases"],
-  ["Email","18","Mailboxes"],
-];
+import { prisma } from "@/lib/prisma";
 
 export default async function Dashboard() {
   const user = await getCurrentUser();\n  if (!user) redirect("/login");
+  const [projects, databases, domains, deployments] = await Promise.all([
+    prisma.project.findMany({ where: { userId: user.id }, include: { domains: true }, orderBy: { updatedAt: "desc" } }),
+    prisma.hostedDatabase.count({ where: { userId: user.id } }),
+    prisma.domain.count({ where: { project: { userId: user.id } } }),
+    prisma.deployment.findMany({ where: { project: { userId: user.id } }, include: { project: true }, orderBy: { createdAt: "desc" }, take: 5 }),
+  ]);
+  const liveProjects = projects.filter(project => project.status === "RUNNING").length;
+  const serviceCards = [
+    ["Websites", String(projects.length), liveProjects + " online"],
+    ["Domains", String(domains), "Managed domains"],
+    ["Databases", String(databases), "Active databases"],
+    ["Deployments", String(deployments.length), "Recent deployments"],
+  ];
   return <main className="dashboard">
     <aside className="sidebar">
       <div className="brand"><span className="brand-mark">H</span><span>Hosting Platform</span></div>
@@ -20,16 +27,16 @@ export default async function Dashboard() {
     <section className="dashboard-main">
       <header className="dash-header"><div><span className="muted">Home</span><h1>Welcome back{user.name ? `, ${user.name}` : ""}</h1></div><button>+ New website</button></header>
       <div className="notice"><div><b>Your hosting platform is ready.</b><span>Connect a domain or deploy your first application.</span></div><span>→</span></div>
-      <div className="service-grid">{services.map(([name,value,text])=><div className="service-card" key={name}><span>{name}</span><strong>{value}</strong><small>{text}</small></div>)}</div>
+      <div className="service-grid">{serviceCards.map(([name,value,text])=><div className="service-card" key={name}><span>{name}</span><strong>{value}</strong><small>{text}</small></div>)}</div>
       <div className="content-grid">
         <div className="card"><div className="card-title"><div><b>Websites</b><span>Manage your hosted websites</span></div><a>View all →</a></div>
-          {["mybusiness.com","my-project.yourhost.com","store.example.com"].map((site,i)=><div className="row" key={site}><div className="site-dot">W</div><div><b>{site}</b><span>{i===0?"WordPress":"Application hosting"}</span></div><em>● Online</em></div>)}
+          {projects.slice(0,3).map(project=><div className="row" key={project.id}><div className="site-dot">W</div><div><b>{project.name}</b><span>{project.publicUrl || project.slug}</span></div><em className={project.status === "RUNNING" ? "online" : ""}>● {project.status}</em></div>)}{projects.length===0&&<div className="empty-state">No websites yet. Create your first project to get started.</div>}
         </div>
         <div className="card"><div className="card-title"><div><b>Resource usage</b><span>Current billing period</span></div></div>
           {[["Storage","24.8 / 100 GB","25%"],["Bandwidth","41 / 500 GB","8%"],["CPU","12%","12%"]].map(([n,v,w])=><div className="usage" key={n}><div><span>{n}</span><b>{v}</b></div><i><u style={{width:w}}/></i></div>)}
         </div>
         <div className="card full"><div className="card-title"><div><b>Recent deployments</b><span>Latest application activity</span></div><a>View deployments →</a></div>
-          {[["my-project","Production · main","Success","2 min ago"],["api-service","Production · main","Success","1 hour ago"]].map(([n,s,status,time])=><div className="row" key={n}><div className="site-dot">D</div><div><b>{n}</b><span>{s}</span></div><em>{status}</em><small>{time}</small></div>)}
+          {deployments.map(deployment=><div className="row" key={deployment.id}><div className="site-dot">D</div><div><b>{deployment.project.name}</b><span>Production · {deployment.project.repositoryBranch}</span></div><em>{deployment.status}</em><small>{new Date(deployment.createdAt).toLocaleString()}</small></div>)}{deployments.length===0&&<div className="empty-state">No deployments yet.</div>}
         </div>
       </div>
     </section>
