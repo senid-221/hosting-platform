@@ -17,7 +17,11 @@ export async function POST(request:Request){
   const cpuCores=Math.max(1,Number(body.cpuCores||1));
   const memoryGb=Math.max(1,Number(body.memoryGb||1));
   const storageGb=Math.max(1,Number(body.storageGb||1));
+  const maxConcurrentDeployments=Math.max(1,Math.floor(Number(body.maxConcurrentDeployments||4)));
+  const reservedCpuPercent=Math.max(0,Number(body.reservedCpuPercent||10));
+  const reservedMemoryGb=Math.max(0,Number(body.reservedMemoryGb||1));
+  const reservedStorageGb=Math.max(0,Number(body.reservedStorageGb||5));
   if(!name||!hostname||!region) return NextResponse.json({error:"name, hostname and region are required."},{status:400});
-  const server=await prisma.server.create({data:{name,hostname,region,cpuCores,memoryGb,storageGb}});
+  const server=await prisma.server.create({data:{name,hostname,region,cpuCores,memoryGb,storageGb,maxConcurrentDeployments,reservedCpuPercent,reservedMemoryGb,reservedStorageGb}});
   return NextResponse.json({server},{status:201});
 }
