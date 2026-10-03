@@ -98,7 +98,10 @@ export async function executeDeployment(job:{
 
     await api(job.deploymentId,"READY",{
       buildLog:log+"Runtime started successfully.\n",
-      runtimeLog:inspect.stdout.trim()
+      runtimeLog:inspect.stdout.trim(),
+      runtimePort:job.port||3000,
+      runtimeContainer:container,
+      publicUrl:job.publicUrl
     });
   }catch(error){
     const message=error instanceof Error?error.message:String(error);
