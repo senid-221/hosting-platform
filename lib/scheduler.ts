@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/prisma";
+import { deploymentQueue } from "@/lib/queue";
 
 export async function selectDeploymentServer(){
   const staleSeconds=Number(process.env.NODE_HEARTBEAT_TIMEOUT_SECONDS??90);
@@ -89,7 +90,19 @@ export async function recoverStaleDeployments(){
       where:{id:deployment.id,status:{in:["BUILDING","DEPLOYING"]},retryCount:deployment.retryCount},
       data:{status:"QUEUED",serverId:server.id,retryCount:{increment:1},heartbeatAt:null,startedAt:null,finishedAt:null}
     });
-    if(claimed.count){requeued++;servers.push(server.name);}
+    if(claimed.count){
+      await deploymentQueue.add("deploy",{
+        deploymentId:deployment.id,
+        projectId:deployment.projectId,
+        repo:deployment.project.repositoryUrl,
+        branch:deployment.project.repositoryBranch,
+        commitSha:deployment.commitSha,
+        serverId:server.id,
+        serverHostname:server.hostname
+      },{removeOnComplete:100,removeOnFail:1000});
+      requeued++;
+      servers.push(server.name);
+    }
   }
   return {requeued,failed,servers};
 }
