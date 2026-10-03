@@ -32,11 +32,15 @@ async function update(id:string,data:Record<string,unknown>) {
 }
 
 async function processDeployment(job:Job) {
-  const {deploymentId,projectId,repositoryUrl,repositoryBranch,commitSha}=job.data as {
-    deploymentId:string; projectId:string; repositoryUrl:string|null; repositoryBranch:string; commitSha:string|null;
+  const {deploymentId,projectId,repositoryUrl,repositoryBranch,commitSha,serverId}=job.data as {
+    deploymentId:string; projectId:string; repositoryUrl:string|null; repositoryBranch:string; commitSha:string|null; serverId:string|null;
   };
 
   if (!repositoryUrl) throw new Error("A Git repository is required before deployment.");
+  if (serverId) {
+    const server=await prisma.server.findUnique({where:{id:serverId}});
+    if (!server || !server.active || server.status==="DRAINING" || server.status==="MAINTENANCE" || server.health==="UNHEALTHY") throw new Error("Assigned deployment server is no longer available.");
+  }
 
   const dir = await mkdtemp(path.join(tmpdir(),"hosting-build-"));
   const image=safeImage(projectId);
