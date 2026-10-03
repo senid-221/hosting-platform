@@ -10,3 +10,6 @@ The node agent runs on a data-plane server and communicates with the control pla
 5. Deployment execution can be performed locally on the node without exposing the Docker socket to the control plane.
 
 The control plane remains responsible for authentication, scheduling, metadata, and policy. The node agent is responsible for local infrastructure operations.
+
+
+Runtime monitoring checks each container's configured `healthPath` over the container network after a configurable startup grace period. A runtime is considered unhealthy only after the configured consecutive failure threshold is reached, reducing false auto-heal actions during startup.
