@@ -62,6 +62,8 @@ model Deployment {
   id String @id @default(cuid())
   projectId String
   project Project @relation(fields:[projectId], references:[id], onDelete:Cascade)
+  serverId String?
+  server Server? @relation(fields:[serverId], references:[id], onDelete:SetNull)
   commitSha String?
   status DeploymentStatus @default(QUEUED)
   buildLog String?
@@ -148,6 +150,7 @@ model Server {
   storageUsedGb Float @default(0)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+  deployments Deployment[]
 }
 
 enum DatabaseEngine { POSTGRESQL MYSQL REDIS }
