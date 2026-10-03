@@ -1,0 +1,100 @@
+generator client { provider = "prisma-client-js" }
+datasource db { provider = "postgresql" url = env("DATABASE_URL") }
+
+enum ProjectStatus { DRAFT BUILDING RUNNING FAILED STOPPED }
+enum DeploymentStatus { QUEUED BUILDING DEPLOYING READY FAILED CANCELED }
+enum SubscriptionStatus { TRIALING ACTIVE PAST_DUE CANCELED }
+
+model User {
+  id String @id @default(cuid())
+  email String @unique
+  name String?
+  image String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  projects Project[]
+  subscriptions Subscription[]
+}
+model Project {
+  id String @id @default(cuid())
+  name String
+  slug String @unique
+  repositoryUrl String?
+  repositoryBranch String @default("main")
+  framework String?
+  buildCommand String?
+  startCommand String?
+  port Int?
+  status ProjectStatus @default(DRAFT)
+  publicUrl String?
+  userId String
+  user User @relation(fields:[userId], references:[id], onDelete:Cascade)
+  deployments Deployment[]
+  environmentVariables EnvironmentVariable[]
+  domains Domain[]
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+model Deployment {
+  id String @id @default(cuid())
+  projectId String
+  project Project @relation(fields:[projectId], references:[id], onDelete:Cascade)
+  commitSha String?
+  status DeploymentStatus @default(QUEUED)
+  buildLog String?
+  runtimeLog String?
+  startedAt DateTime?
+  finishedAt DateTime?
+  createdAt DateTime @default(now())
+}
+model EnvironmentVariable {
+  id String @id @default(cuid())
+  projectId String
+  project Project @relation(fields:[projectId], references:[id], onDelete:Cascade)
+  key String
+  value String
+  environment String @default("production")
+  createdAt DateTime @default(now())
+  @@unique([projectId,key,environment])
+}
+model Domain {
+  id String @id @default(cuid())
+  name String @unique
+  verified Boolean @default(false)
+  sslEnabled Boolean @default(false)
+  projectId String?
+  project Project? @relation(fields:[projectId], references:[id], onDelete:SetNull)
+  createdAt DateTime @default(now())
+}
+model Plan {
+  id String @id @default(cuid())
+  name String @unique
+  monthlyPrice Int
+  storageGb Int
+  bandwidthGb Int
+  websites Int
+  databases Int
+  mailboxes Int
+  subscriptions Subscription[]
+}
+model Subscription {
+  id String @id @default(cuid())
+  userId String
+  planId String
+  status SubscriptionStatus @default(TRIALING)
+  user User @relation(fields:[userId], references:[id], onDelete:Cascade)
+  plan Plan @relation(fields:[planId], references:[id])
+  startedAt DateTime @default(now())
+  renewsAt DateTime?
+}
+model Server {
+  id String @id @default(cuid())
+  name String @unique
+  hostname String
+  region String
+  cpuCores Int
+  memoryGb Int
+  storageGb Int
+  active Boolean @default(true)
+  createdAt DateTime @default(now())
+}
