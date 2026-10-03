@@ -56,11 +56,11 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
   if (body.active !== undefined) data.active = Boolean(body.active);
   for (const key of ["name","hostname","region"] as const) if (body[key] !== undefined) data[key] = String(body[key]).trim();
 
-  if (body.action === "ACTIVATE") { data.active = true; data.status = "ONLINE"; }
-  if (body.action === "DEACTIVATE") { data.active = false; data.status = "OFFLINE"; }
-  if (body.action === "DRAIN") { data.active = true; data.status = "DRAINING"; }
-  if (body.action === "MAINTENANCE") { data.active = false; data.status = "MAINTENANCE"; }
-  if (body.action === "ONLINE") { data.active = true; data.status = "ONLINE"; }
+  if (body.action === "ACTIVATE") { data.active = true; data.status = "ONLINE"; data.drainReason = "NONE"; }
+  if (body.action === "DEACTIVATE") { data.active = false; data.status = "OFFLINE"; data.drainReason = "ADMIN"; }
+  if (body.action === "DRAIN") { data.active = true; data.status = "DRAINING"; data.drainReason = "ADMIN"; }
+  if (body.action === "MAINTENANCE") { data.active = false; data.status = "MAINTENANCE"; data.drainReason = "ADMIN"; }
+  if (body.action === "ONLINE") { data.active = true; data.status = "ONLINE"; data.drainReason = "NONE"; }
 
   if (body.action && !["ACTIVATE","DEACTIVATE","DRAIN","MAINTENANCE","ONLINE"].includes(body.action)) {
     return NextResponse.json({ error: "Invalid node action." }, { status: 400 });
