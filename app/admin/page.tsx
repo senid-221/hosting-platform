@@ -1,6 +1,7 @@
 import {redirect} from "next/navigation";
 import {getCurrentUser} from "@/lib/auth";
 import {prisma} from "@/lib/prisma";
+import NodeManagement from "./NodeManagement";
 
 export default async function Admin(){
   const user=await getCurrentUser();if(!user)redirect("/login");if(user.role!=="ADMIN")redirect("/dashboard");
@@ -20,6 +21,12 @@ export default async function Admin(){
     <div className="admin-main"><p className="eyebrow">ADMINISTRATION</p><h1>Infrastructure center</h1>
       <div className="stats">{stats.map(([a,b])=><div className="stat" key={String(a)}><span>{String(a)}</span><strong>{String(b)}</strong></div>)}</div>
       <div className="mini-grid"><div><span>Healthy nodes</span><b>{online}/{servers.length}</b></div><div><span>Failed projects</span><b>{failedProjects}</b></div><div><span>Auto-healing active</span><b>{activeSelfHealing}</b></div></div>
+      <NodeManagement initial={servers.map(s=>({
+        id:s.id,name:s.name,hostname:s.hostname,region:s.region,active:s.active,status:s.status,health:s.health,
+        cpuCores:s.cpuCores,memoryGb:s.memoryGb,storageGb:s.storageGb,cpuUsedPercent:s.cpuUsedPercent,
+        memoryUsedGb:s.memoryUsedGb,storageUsedGb:s.storageUsedGb,lastHeartbeatAt:s.lastHeartbeatAt?.toISOString()??null,
+        agentVersion:s.agentVersion
+      }))} />
       <div className="admin-grid">
         <section><div className="section-head"><h2>Infrastructure</h2><span>{servers.length} nodes</span></div><div className="table"><div className="thead"><span>Server</span><span>Region</span><span>Resources</span><span>Health</span></div>
           {servers.map(s=><div className="tr" key={s.id}><span><b>{s.name}</b><small>{s.hostname}</small></span><span>{s.region}</span><span>CPU {Math.round(s.cpuUsedPercent)}% · RAM {s.memoryUsedGb.toFixed(1)}/{s.memoryGb} GB</span><span className={s.health==="HEALTHY"?"good":"bad"}>{s.health}<small>{s.lastHeartbeatAt?new Date(s.lastHeartbeatAt).toLocaleTimeString():"No heartbeat"}</small></span></div>)}
