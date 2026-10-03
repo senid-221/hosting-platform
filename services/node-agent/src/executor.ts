@@ -2,7 +2,7 @@ import { execFile } from "node:child_process";
 import { promisify } from "node:util";
 import { mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
-import { mkdir, writeFile } from "node:fs/promises";
+import { mkdir, writeFile, readFile } from "node:fs/promises";
 import path from "node:path";
 
 const exec=promisify(execFile);
@@ -10,6 +10,26 @@ const CONTROL_PLANE=process.env.CONTROL_PLANE_URL||"http://localhost:3000";
 const TOKEN=process.env.NODE_AGENT_TOKEN||"";
 const MEMORY=process.env.NODE_RUNTIME_MEMORY||"768m";
 const CPU=process.env.NODE_RUNTIME_CPU||"1.0";
+const CADDYFILE=process.env.CADDYFILE_PATH||"/etc/caddy/Caddyfile";
+const CADDY_CONTAINER=process.env.CADDY_CONTAINER||"hosting-caddy";
+const NETWORK=process.env.NODE_RUNTIME_NETWORK||"hosting-runtime";
+
+async function renderProxyConfig(input:{container:string;port:number;hostname?:string;customDomains:string[];healthPath?:string}){
+  await exec("docker",["network","inspect",NETWORK]).catch(()=>exec("docker",["network","create",NETWORK]));
+  await exec("docker",["network","connect",NETWORK,CADDY_CONTAINER]).catch(()=>{});
+  const hosts=[input.hostname,...input.customDomains].filter(Boolean).map(h=>String(h));
+  if(!hosts.length) return;
+  const block=`# HOSTING_PROJECT:${input.container}\n${hosts.join(" ")} {\n  reverse_proxy ${input.container}:${input.port} {\n    health_uri ${input.healthPath||"/"}\n    health_interval 10s\n    health_timeout 3s\n  }\n}\n`;
+  let current=""; try{current=await readFile(CADDYFILE,"utf8");}catch{}
+  const marker=`# HOSTING_PROJECT:${input.container}`;
+  const pattern=new RegExp(`${marker}[\\s\\S]*?(?=\\n# HOSTING_PROJECT:|$)`,"g");
+  const next=current.replace(pattern,"").trim();
+  await mkdir(path.dirname(CADDYFILE),{recursive:true});
+  await writeFile(CADDYFILE,(next?next+"\n\n":"")+block,"utf8");
+  await exec("docker",["exec",CADDY_CONTAINER,"caddy","reload","--config",CADDYFILE]).catch(async()=>{
+    await exec("docker",["exec",CADDY_CONTAINER,"caddy","reload","--config","/etc/caddy/Caddyfile"]); 
+  });
+}
 const CADDYFILE=process.env.CADDYFILE_PATH||"/etc/caddy/Caddyfile";
 const CADDY_CONTAINER=process.env.CADDY_CONTAINER||"hosting-caddy";
 const NETWORK=process.env.NODE_RUNTIME_NETWORK||"hosting-runtime";
