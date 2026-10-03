@@ -2,6 +2,7 @@ import { execFile } from "node:child_process";
 import { promisify } from "node:util";
 import { mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
+import { mkdir, writeFile } from "node:fs/promises";
 import path from "node:path";
 
 const exec=promisify(execFile);
@@ -9,6 +10,9 @@ const CONTROL_PLANE=process.env.CONTROL_PLANE_URL||"http://localhost:3000";
 const TOKEN=process.env.NODE_AGENT_TOKEN||"";
 const MEMORY=process.env.NODE_RUNTIME_MEMORY||"768m";
 const CPU=process.env.NODE_RUNTIME_CPU||"1.0";
+const CADDYFILE=process.env.CADDYFILE_PATH||"/etc/caddy/Caddyfile";
+const CADDY_CONTAINER=process.env.CADDY_CONTAINER||"hosting-caddy";
+const NETWORK=process.env.NODE_RUNTIME_NETWORK||"hosting-runtime";
 
 async function api(id:string,status:string,extra:Record<string,unknown>={}){
   const response=await fetch(CONTROL_PLANE+"/api/node-agent/deployments/"+id+"/status",{
@@ -30,6 +34,10 @@ export async function executeDeployment(job:{
   repositoryBranch:string;
   commitSha?:string|null;
   port?:number|null;
+  healthPath?:string;
+  hostname?:string;
+  publicUrl?:string;
+  customDomains?:string[];
 }){
   const dir=await mkdtemp(path.join(tmpdir(),"hosting-node-"));
   const container="hosting-runtime-"+job.projectId;
@@ -57,9 +65,13 @@ export async function executeDeployment(job:{
       "--memory",MEMORY,"--cpus",CPU,"--pids-limit","256",
       "--read-only","--tmpfs","/tmp:rw,noexec,nosuid,size=128m",
       "--cap-drop","ALL","--security-opt","no-new-privileges:true",
-      "--network","hosting-runtime",image
+      "--network",NETWORK,
+      "--label",`hosting.project=${job.projectId}`,
+      "--label",`hosting.hostname=${job.hostname||""}`,
+      image
     ]);
 
+    await renderProxyConfig({container,port:job.port||3000,hostname:job.hostname,customDomains:job.customDomains||[]});
     const inspect=await exec("docker",["inspect","-f","{{.State.Running}}",container]);
     if(inspect.stdout.trim()!=="true") throw new Error("Runtime container did not start.");
 
