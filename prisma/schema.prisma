@@ -51,6 +51,8 @@ model Project {
   deployments Deployment[]
   environmentVariables EnvironmentVariable[]
   domains Domain[]
+  files FileNode[]
+  backups Backup[]
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 }
@@ -157,6 +159,7 @@ model HostedDatabase {
   user User @relation(fields:[userId], references:[id], onDelete:Cascade)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+  backups Backup[]
   @@unique([userId,name])
 }
 
