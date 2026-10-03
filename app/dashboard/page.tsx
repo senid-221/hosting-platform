@@ -3,7 +3,8 @@ import { getCurrentUser } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 
 export default async function Dashboard() {
-  const user = await getCurrentUser();\n  if (!user) redirect("/login");
+  const user = await getCurrentUser();
+  if (!user) redirect("/login");
   const [projects, databases, domains, deployments] = await Promise.all([
     prisma.project.findMany({ where: { userId: user.id }, include: { domains: true }, orderBy: { updatedAt: "desc" } }),
     prisma.hostedDatabase.count({ where: { userId: user.id } }),
