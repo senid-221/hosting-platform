@@ -58,3 +58,15 @@
 - [ ] Monitoring
 - [ ] Autoscaling
 - [ ] Disaster recovery
+
+
+## Phase 7 — Storage & resilience
+- [x] File manager metadata APIs
+- [x] Signed storage access foundation
+- [x] Project/database backup records
+- [x] Backup retention and restore workflow
+- [ ] Production object-storage adapter
+- [ ] Backup worker implementation
+- [ ] Scheduled backup scheduler
+- [ ] Encrypted archive creation
+- [ ] Restore verification and checksums
