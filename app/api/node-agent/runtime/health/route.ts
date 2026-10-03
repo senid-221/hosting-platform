@@ -33,11 +33,13 @@ export async function POST(request:Request){
   }
 
   await prisma.project.update({where:{id:project.id},data:{status:"FAILED"}});
+  await prisma.runtimeEvent.create({data:{projectId:project.id,serverId:server.id,type:"HEALTH_FAILURE",message:"Runtime container is no longer running."}});
   const since=new Date(Date.now()-AUTO_HEAL_WINDOW_MS);
   const recent=await prisma.runtimeCommand.count({where:{projectId:project.id,serverId:server.id,autoHeal:true,createdAt:{gte:since}}});
   const active=await prisma.runtimeCommand.findFirst({where:{projectId:project.id,serverId:server.id,status:{in:["QUEUED","RUNNING"]}}});
 
   if(!active && recent<MAX_AUTO_HEAL_ATTEMPTS){
+    await prisma.runtimeEvent.create({data:{projectId:project.id,serverId:server.id,type:"AUTO_HEAL_STARTED",message:`Automatic restart attempt ${recent+1} of ${MAX_AUTO_HEAL_ATTEMPTS}.`}});
     await prisma.runtimeCommand.create({
       data:{
         projectId:project.id,serverId:server.id,type:"RESTART",autoHeal:true,
