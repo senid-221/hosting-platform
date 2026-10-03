@@ -8,6 +8,8 @@ enum SubscriptionStatus { TRIALING ACTIVE PAST_DUE CANCELED }
 enum InvoiceStatus { DRAFT OPEN PAID PAST_DUE VOID }
 enum PaymentStatus { PENDING SUCCEEDED FAILED CANCELED }
 enum UsageMetricType { STORAGE BANDWIDTH DATABASES WEBSITES EMAIL }
+enum ServerStatus { ONLINE OFFLINE DRAINING MAINTENANCE }
+enum ServerHealth { UNKNOWN HEALTHY DEGRADED UNHEALTHY }
 
 model User {
   id String @id @default(cuid())
@@ -138,7 +140,14 @@ model Server {
   memoryGb Int
   storageGb Int
   active Boolean @default(true)
+  status ServerStatus @default(ONLINE)
+  health ServerHealth @default(UNKNOWN)
+  lastHeartbeatAt DateTime?
+  cpuUsedPercent Float @default(0)
+  memoryUsedGb Float @default(0)
+  storageUsedGb Float @default(0)
   createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }
 
 enum DatabaseEngine { POSTGRESQL MYSQL REDIS }
