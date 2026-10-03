@@ -46,6 +46,9 @@ model Project {
   buildCommand String?
   startCommand String?
   port Int?
+  runtimePort Int?
+  runtimeContainer String?
+  healthPath String @default("/")
   status ProjectStatus @default(DRAFT)
   publicUrl String?
   userId String
