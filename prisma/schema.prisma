@@ -73,6 +73,9 @@ model RuntimeCommand {
   server Server? @relation(fields:[serverId], references:[id], onDelete:SetNull)
   type RuntimeCommandType
   status RuntimeCommandStatus @default(QUEUED)
+  autoHeal Boolean @default(false)
+  attempt Int @default(1)
+  maxAttempts Int @default(3)
   output String?
   errorMessage String?
   createdAt DateTime @default(now())
