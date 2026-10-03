@@ -31,7 +31,6 @@ export async function selectDeploymentServer(){
 export async function getNodeCapacity(serverId:string){
   const server=await prisma.server.findUnique({
     where:{id:serverId},
-    include:{_count:{select:{deployments:true,runtimeCommands:true}}}
   });
   if(!server)return null;
   const activeDeployments=await prisma.deployment.count({
