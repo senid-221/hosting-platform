@@ -4,7 +4,7 @@ import { useState } from "react";
 
 type Node = {
   id:string; name:string; hostname:string; region:string; active:boolean;
-  status:string; health:string; cpuCores:number; memoryGb:number; storageGb:number;
+  status:string; health:string; drainReason:string; cpuCores:number; memoryGb:number; storageGb:number;
   cpuUsedPercent:number; memoryUsedGb:number; storageUsedGb:number;
   lastHeartbeatAt:string|null; agentVersion:string|null;
 };
@@ -40,7 +40,7 @@ export default function NodeManagement({initial}:{initial:Node[]}) {
         return <div key={n.id} style={{border:"1px solid #eee",borderRadius:9,padding:14}}>
           <div style={{display:"flex",justifyContent:"space-between",gap:15}}>
             <div><b>{n.name}</b><small style={{display:"block",color:"#888",marginTop:4}}>{n.hostname} · {n.region}</small></div>
-            <div><b style={{color:n.status==="ONLINE"&&n.health==="HEALTHY"?"#29945b":n.status==="DRAINING"?"#b54708":"#b42318"}}>{n.status}</b><small style={{display:"block",color:"#888",marginTop:4}}>{n.health} · {n.lastHeartbeatAt?new Date(n.lastHeartbeatAt).toLocaleString():"No heartbeat"}</small></div>
+            <div><b style={{color:n.status==="ONLINE"&&n.health==="HEALTHY"?"#29945b":n.status==="DRAINING"?"#b54708":"#b42318"}}>{n.status}</b><small style={{display:"block",color:"#888",marginTop:4}}>{n.health}{n.drainReason!=="NONE"?" · "+n.drainReason:""} · {n.lastHeartbeatAt?new Date(n.lastHeartbeatAt).toLocaleString():"No heartbeat"}</small></div>
           </div>
           <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:8,margin:"13px 0",fontSize:11,color:"#777"}}>
             <span>CPU <b style={{color:"#333"}}>{Math.round(n.cpuUsedPercent)}%</b> / {n.cpuCores} cores</span>
