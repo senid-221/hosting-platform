@@ -130,3 +130,38 @@ model Server {
   active Boolean @default(true)
   createdAt DateTime @default(now())
 }
+
+enum DatabaseEngine { POSTGRESQL MYSQL REDIS }
+
+model HostedDatabase {
+  id String @id @default(cuid())
+  name String
+  engine DatabaseEngine
+  host String?
+  port Int?
+  username String
+  passwordHash String
+  databaseName String
+  storageGb Int @default(5)
+  maxConnections Int @default(20)
+  status String @default("PROVISIONING")
+  userId String
+  user User @relation(fields:[userId], references:[id], onDelete:Cascade)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  @@unique([userId,name])
+}
+
+model FileNode {
+  id String @id @default(cuid())
+  projectId String
+  project Project @relation(fields:[projectId], references:[id], onDelete:Cascade)
+  path String
+  type String
+  sizeBytes BigInt @default(0)
+  storageKey String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  @@unique([projectId,path])
+  @@index([projectId])
+}
