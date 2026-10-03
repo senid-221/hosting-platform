@@ -1,4 +1,4 @@
-import os from "node:os";
+import os from "node:os";\nimport { execFileSync } from "node:child_process";
 import { executeDeployment } from "./executor";
 
 const CONTROL_PLANE=process.env.CONTROL_PLANE_URL||"http://localhost:3000";
@@ -20,7 +20,7 @@ async function heartbeat(){
   if(!response.ok) throw new Error("Heartbeat failed: "+response.status);
 }
 
-async function commandPoll(){const response=await request("/api/node-agent/commands/next");if(response.status===204)return;if(!response.ok)throw new Error("Command poll failed: "+response.status);const body=await response.json();const command=body.command;if(!command)return;try{const action=command.type==="RESTART"?"restart":"stop";const {stdout,stderr}=await (await import("node:child_process")).execFileSync("docker",["container",action,command.runtimeContainer],{encoding:"utf8"});await request("/api/node-agent/commands/"+command.id,{method:"POST",body:JSON.stringify({status:"SUCCEEDED",output:String(stdout||"")+String(stderr||"")})});}catch(error){await request("/api/node-agent/commands/"+command.id,{method:"POST",body:JSON.stringify({status:"FAILED",errorMessage:error instanceof Error?error.message:String(error)})}).catch(()=>{});}}\n\nasync function poll(){
+async function commandPoll(){const response=await request("/api/node-agent/commands/next");if(response.status===204)return;if(!response.ok)throw new Error("Command poll failed: "+response.status);const body=await response.json();const command=body.command;if(!command)return;try{const action=command.type==="RESTART"?"restart":"stop";const output=execFileSync("docker",["container",action,command.runtimeContainer],{encoding:"utf8"});await request("/api/node-agent/commands/"+command.id,{method:"POST",body:JSON.stringify({status:"SUCCEEDED",output:String(output||"")})});}catch(error){await request("/api/node-agent/commands/"+command.id,{method:"POST",body:JSON.stringify({status:"FAILED",errorMessage:error instanceof Error?error.message:String(error)})}).catch(()=>{});}}\n\nasync function poll(){
   const response=await request("/api/node-agent/deployments/next");
   if(response.status===204) return;
   if(!response.ok) throw new Error("Deployment poll failed: "+response.status);
