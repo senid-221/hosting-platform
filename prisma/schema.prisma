@@ -184,6 +184,10 @@ model Server {
   cpuCores Int
   memoryGb Int
   storageGb Int
+  maxConcurrentDeployments Int @default(4)
+  reservedCpuPercent Float @default(10)
+  reservedMemoryGb Float @default(1)
+  reservedStorageGb Float @default(5)
   active Boolean @default(true)
   status ServerStatus @default(ONLINE)
   health ServerHealth @default(UNKNOWN)
