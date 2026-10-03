@@ -1,0 +1,17 @@
+services:
+  postgres:
+    image: postgres:17
+    environment:
+      POSTGRES_DB: hosting
+      POSTGRES_USER: hosting
+      POSTGRES_PASSWORD: hosting
+    ports:
+      - "5432:5432"
+    volumes:
+      - hosting_postgres:/var/lib/postgresql/data
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+volumes:
+  hosting_postgres:
