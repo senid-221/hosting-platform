@@ -73,7 +73,7 @@ export async function recoverStaleDeployments(){
   const servers:string[]=[];
   for(const deployment of stale){
     if(deployment.retryCount>=deployment.maxRetries){
-      await prisma.deployment.update({where:{id:deployment.id},data:{status:"FAILED",finishedAt:new Date(),buildLog:"Deployment worker heartbeat timed out after retry limit."} as never});
+      await prisma.deployment.update({where:{id:deployment.id},data:{status:"FAILED",finishedAt:new Date(),buildLog:"Deployment worker heartbeat timed out after retry limit."}});
       await prisma.project.updateMany({where:{id:deployment.projectId,status:"BUILDING"},data:{status:"FAILED"}});
       failed++;
       continue;
