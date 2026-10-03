@@ -1,0 +1,4 @@
+import {NextResponse} from "next/server";
+import {getCurrentUser} from "@/lib/auth";
+import {prisma} from "@/lib/prisma";
+export async function GET(_:Request,{params}:{params:Promise<{id:string}>}){const u=await getCurrentUser();if(!u)return NextResponse.json({error:"Unauthorized"},{status:401});const {id}=await params;const d=await prisma.deployment.findFirst({where:{id,project:{userId:u.id}},include:{server:{select:{name:true,hostname:true,region:true,health:true,cpuUsedPercent:true,memoryUsedGb:true}}}});if(!d)return NextResponse.json({error:"Deployment not found."},{status:404});return NextResponse.json({deployment:d})}
