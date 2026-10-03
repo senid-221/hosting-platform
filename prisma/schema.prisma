@@ -61,6 +61,24 @@ model Project {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 }
+enum RuntimeCommandType { RESTART STOP }
+enum RuntimeCommandStatus { QUEUED RUNNING SUCCEEDED FAILED }
+
+model RuntimeCommand {
+  id String @id @default(cuid())
+  projectId String
+  project Project @relation(fields:[projectId], references:[id], onDelete:Cascade)
+  type RuntimeCommandType
+  status RuntimeCommandStatus @default(QUEUED)
+  output String?
+  errorMessage String?
+  createdAt DateTime @default(now())
+  startedAt DateTime?
+  finishedAt DateTime?
+  @@index([projectId,createdAt])
+  @@index([status,createdAt])
+}
+
 model Deployment {
   id String @id @default(cuid())
   projectId String
