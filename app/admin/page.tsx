@@ -22,7 +22,7 @@ export default async function Admin(){
       <div className="stats">{stats.map(([a,b])=><div className="stat" key={String(a)}><span>{String(a)}</span><strong>{String(b)}</strong></div>)}</div>
       <div className="mini-grid"><div><span>Healthy nodes</span><b>{online}/{servers.length}</b></div><div><span>Failed projects</span><b>{failedProjects}</b></div><div><span>Auto-healing active</span><b>{activeSelfHealing}</b></div></div>
       <NodeManagement initial={servers.map(s=>({
-        id:s.id,name:s.name,hostname:s.hostname,region:s.region,active:s.active,status:s.status,health:s.health,
+        id:s.id,name:s.name,hostname:s.hostname,region:s.region,active:s.active,status:s.status,health:s.health,drainReason:s.drainReason,
         cpuCores:s.cpuCores,memoryGb:s.memoryGb,storageGb:s.storageGb,cpuUsedPercent:s.cpuUsedPercent,
         memoryUsedGb:s.memoryUsedGb,storageUsedGb:s.storageUsedGb,lastHeartbeatAt:s.lastHeartbeatAt?.toISOString()??null,
         agentVersion:s.agentVersion
