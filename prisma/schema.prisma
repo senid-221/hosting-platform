@@ -5,6 +5,9 @@ enum UserRole { CUSTOMER ADMIN }
 enum ProjectStatus { DRAFT BUILDING RUNNING FAILED STOPPED }
 enum DeploymentStatus { QUEUED BUILDING DEPLOYING READY FAILED CANCELED }
 enum SubscriptionStatus { TRIALING ACTIVE PAST_DUE CANCELED }
+enum InvoiceStatus { DRAFT OPEN PAID PAST_DUE VOID }
+enum PaymentStatus { PENDING SUCCEEDED FAILED CANCELED }
+enum UsageMetricType { STORAGE BANDWIDTH DATABASES WEBSITES EMAIL }
 
 model User {
   id String @id @default(cuid())
@@ -18,6 +21,10 @@ model User {
   projects Project[]
   subscriptions Subscription[]
   sessions Session[]
+  invoices Invoice[]
+  payments Payment[]
+  usageRecords UsageRecord[]
+  hostedDatabases HostedDatabase[]
 }
 model Session {
   id String @id @default(cuid())
@@ -118,6 +125,7 @@ model Subscription {
   plan Plan @relation(fields:[planId], references:[id])
   startedAt DateTime @default(now())
   renewsAt DateTime?
+  invoices Invoice[]
 }
 model Server {
   id String @id @default(cuid())
@@ -188,4 +196,52 @@ model Backup {
   completedAt DateTime?
   @@index([projectId,createdAt])
   @@index([databaseId,createdAt])
+}
+
+
+model Invoice {
+  id String @id @default(cuid())
+  number String @unique
+  userId String
+  subscriptionId String?
+  amount Int
+  currency String @default("USD")
+  status InvoiceStatus @default(OPEN)
+  dueAt DateTime?
+  paidAt DateTime?
+  user User @relation(fields:[userId], references:[id], onDelete:Cascade)
+  subscription Subscription? @relation(fields:[subscriptionId], references:[id], onDelete:SetNull)
+  payments Payment[]
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  @@index([userId,createdAt])
+}
+
+model Payment {
+  id String @id @default(cuid())
+  userId String
+  invoiceId String?
+  provider String
+  externalId String?
+  amount Int
+  currency String @default("USD")
+  status PaymentStatus @default(PENDING)
+  user User @relation(fields:[userId], references:[id], onDelete:Cascade)
+  invoice Invoice? @relation(fields:[invoiceId], references:[id], onDelete:SetNull)
+  createdAt DateTime @default(now())
+  @@index([userId,createdAt])
+  @@index([invoiceId])
+}
+
+model UsageRecord {
+  id String @id @default(cuid())
+  userId String
+  metric UsageMetricType
+  value Float
+  unit String
+  periodStart DateTime
+  periodEnd DateTime
+  user User @relation(fields:[userId], references:[id], onDelete:Cascade)
+  createdAt DateTime @default(now())
+  @@index([userId,metric,periodStart])
 }
