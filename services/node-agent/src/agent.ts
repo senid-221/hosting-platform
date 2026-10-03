@@ -1,5 +1,6 @@
 import os from "node:os";
 import { execFileSync } from "node:child_process";
+import { statfsSync } from "node:fs";
 import { executeDeployment } from "./executor";
 
 const CONTROL_PLANE=process.env.CONTROL_PLANE_URL||"http://localhost:3000";
@@ -7,6 +8,8 @@ const TOKEN=process.env.NODE_AGENT_TOKEN||"";
 const interval=Number(process.env.NODE_AGENT_HEARTBEAT_SECONDS||30)*1000;
 const pollInterval=Number(process.env.NODE_AGENT_POLL_SECONDS||5)*1000;
 const healthInterval=Number(process.env.NODE_AGENT_HEALTH_SECONDS||15)*1000;
+const diskRoot=process.env.NODE_AGENT_DISK_PATH||"/";
+const cpuCount=Math.max(1,os.cpus().length);
 
 async function request(path:string,init:RequestInit={}){
   return fetch(CONTROL_PLANE+path,{...init,headers:{authorization:"Bearer "+TOKEN,"content-type":"application/json",...(init.headers||{})}});
@@ -15,9 +18,22 @@ async function request(path:string,init:RequestInit={}){
 async function heartbeat(){
   const total=os.totalmem()/1024**3;
   const free=os.freemem()/1024**3;
+  const load=os.loadavg()[0];
+  const cpuUsedPercent=Math.min(100,Math.max(0,(load/cpuCount)*100));
+  let storageUsedGb=0;
+  try{
+    const fs=statfsSync(diskRoot);
+    const totalBytes=Number(fs.blocks)*Number(fs.bsize);
+    const freeBytes=Number(fs.bfree)*Number(fs.bsize);
+    storageUsedGb=Math.max(0,(totalBytes-freeBytes)/1024**3);
+  }catch{}
+  const memoryUsedGb=Math.max(0,total-free);
+  const cpuLimit=Number(process.env.NODE_AGENT_DEGRADED_CPU_PERCENT||85);
+  const memoryLimit=Number(process.env.NODE_AGENT_DEGRADED_MEMORY_PERCENT||90);
+  const health=cpuUsedPercent>=cpuLimit||memoryUsedGb>=total*(memoryLimit/100)?"DEGRADED":"HEALTHY";
   const response=await request("/api/node-agent/heartbeat",{method:"POST",body:JSON.stringify({
-    health:"HEALTHY",agentVersion:process.env.NODE_AGENT_VERSION||"0.3.0",
-    cpuUsedPercent:0,memoryUsedGb:Math.max(0,total-free),storageUsedGb:0
+    health,agentVersion:process.env.NODE_AGENT_VERSION||"0.4.0",
+    cpuUsedPercent,memoryUsedGb,storageUsedGb
   })});
   if(!response.ok) throw new Error("Heartbeat failed: "+response.status);
 }
