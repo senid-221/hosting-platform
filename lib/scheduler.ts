@@ -6,7 +6,7 @@ export async function selectDeploymentServer(){
   const servers=await prisma.server.findMany({
     where:{
       active:true,status:"ONLINE",health:{in:["HEALTHY","DEGRADED"]},
-      OR:[{lastHeartbeatAt:null},{lastHeartbeatAt:{gte:cutoff}}]
+      lastHeartbeatAt:{gte:cutoff}
     },
     orderBy:[{health:"asc"},{cpuUsedPercent:"asc"},{memoryUsedGb:"asc"},{storageUsedGb:"asc"}]
   });
