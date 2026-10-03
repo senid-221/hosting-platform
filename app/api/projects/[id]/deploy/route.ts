@@ -17,6 +17,12 @@ export async function POST(request: Request, {params}:{params:Promise<{id:string
     if(body.commitSha) commitSha=String(body.commitSha);
   } catch {}
 
+  const active=await prisma.deployment.findFirst({
+    where:{projectId:project.id,status:{in:["QUEUED","BUILDING","DEPLOYING"]}},
+    orderBy:{createdAt:"desc"}
+  });
+  if(active) return NextResponse.json({error:"A deployment is already in progress for this project.",deployment:active},{status:409});
+
   const server=await selectDeploymentServer();
   if(!server) return NextResponse.json({error:"No healthy deployment server currently has enough capacity."},{status:503});
 
