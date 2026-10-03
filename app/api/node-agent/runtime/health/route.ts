@@ -23,7 +23,7 @@ export async function POST(request:Request){
   const running=Boolean(body.running);
   const project=await prisma.project.findFirst({
     where:{id:projectId,deployments:{some:{serverId:server.id,status:"READY"}}},
-    select:{id:true,status:true,runtimeContainer:true}
+    select:{id:true,status:true,runtimeContainer:true,runtimePort:true,healthPath:true}
   });
   if(!project)return NextResponse.json({error:"Runtime project not found for this node."},{status:404});
 
