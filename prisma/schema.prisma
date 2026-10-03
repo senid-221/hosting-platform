@@ -150,6 +150,8 @@ model Server {
   storageUsedGb Float @default(0)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+  agentTokenHash String?
+  agentVersion String?
   deployments Deployment[]
 }
 
