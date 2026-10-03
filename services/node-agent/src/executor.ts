@@ -12,6 +12,7 @@ const MEMORY=process.env.NODE_RUNTIME_MEMORY||"768m";
 const CPU=process.env.NODE_RUNTIME_CPU||"1.0";
 const CADDYFILE=process.env.CADDYFILE_PATH||"/etc/caddy/Caddyfile";
 const CADDY_CONTAINER=process.env.CADDY_CONTAINER||"hosting-caddy";
+const CADDYFILE_CONTAINER=process.env.CADDYFILE_CONTAINER_PATH||"/etc/caddy/Caddyfile";
 const NETWORK=process.env.NODE_RUNTIME_NETWORK||"hosting-runtime";
 
 async function renderProxyConfig(input:{container:string;port:number;hostname?:string;customDomains:string[];healthPath?:string}){
