@@ -29,7 +29,12 @@ export async function GET(_: Request, { params }: { params: Promise<{ id: string
       cpuPercent: server.cpuUsedPercent,
       memoryPercent: server.memoryGb ? (server.memoryUsedGb / server.memoryGb) * 100 : 0,
       storagePercent: server.storageGb ? (server.storageUsedGb / server.storageGb) * 100 : 0,
+      maxConcurrentDeployments: server.maxConcurrentDeployments,
+      reservedCpuPercent: server.reservedCpuPercent,
+      reservedMemoryGb: server.reservedMemoryGb,
+      reservedStorageGb: server.reservedStorageGb,
       activeDeployments,
+      availableDeploymentSlots: Math.max(0, server.maxConcurrentDeployments - activeDeployments),
       runningCommands,
       runningProjects
     }
@@ -54,6 +59,8 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
     data.health = body.health;
   }
   if (body.active !== undefined) data.active = Boolean(body.active);
+  if (body.maxConcurrentDeployments !== undefined) data.maxConcurrentDeployments = Math.max(1, Math.floor(Number(body.maxConcurrentDeployments)));
+  for (const key of ["reservedCpuPercent","reservedMemoryGb","reservedStorageGb"] as const) if (body[key] !== undefined) data[key] = Math.max(0, Number(body[key]));
   for (const key of ["name","hostname","region"] as const) if (body[key] !== undefined) data[key] = String(body[key]).trim();
 
   if (body.action === "ACTIVATE") { data.active = true; data.status = "ONLINE"; data.drainReason = "NONE"; }
