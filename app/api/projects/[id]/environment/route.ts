@@ -1,0 +1,11 @@
+import {NextResponse} from "next/server";
+import {getCurrentUser} from "@/lib/auth";
+import {prisma} from "@/lib/prisma";
+
+async function owned(id:string,userId:string){return prisma.project.findFirst({where:{id,userId},select:{id:true}})}
+
+export async function GET(_:Request,{params}:{params:Promise<{id:string}>}){const u=await getCurrentUser();if(!u)return NextResponse.json({error:"Unauthorized"},{status:401});const {id}=await params;if(!await owned(id,u.id))return NextResponse.json({error:"Project not found."},{status:404});const vars=await prisma.environmentVariable.findMany({where:{projectId:id},select:{id:true,key:true,environment:true,createdAt:true},orderBy:{key:"asc"}});return NextResponse.json({variables:vars})}
+
+export async function POST(request:Request,{params}:{params:Promise<{id:string}>}){const u=await getCurrentUser();if(!u)return NextResponse.json({error:"Unauthorized"},{status:401});const {id}=await params;if(!await owned(id,u.id))return NextResponse.json({error:"Project not found."},{status:404});const b=await request.json();const key=String(b.key??"").trim();const value=String(b.value??"");const environment=String(b.environment??"production");if(!/^[A-Z_][A-Z0-9_]*$/i.test(key)||!value)return NextResponse.json({error:"Valid key and non-empty value are required."},{status:400});const variable=await prisma.environmentVariable.upsert({where:{projectId_key_environment:{projectId:id,key,environment}},update:{value},create:{projectId:id,key,value,environment}});return NextResponse.json({variable:{id:variable.id,key:variable.key,environment:variable.environment,updated:true}},{status:201})}
+
+export async function DELETE(request:Request,{params}:{params:Promise<{id:string}>}){const u=await getCurrentUser();if(!u)return NextResponse.json({error:"Unauthorized"},{status:401});const {id}=await params;if(!await owned(id,u.id))return NextResponse.json({error:"Project not found."},{status:404});const variableId=new URL(request.url).searchParams.get("id");if(!variableId)return NextResponse.json({error:"Variable id is required."},{status:400});await prisma.environmentVariable.deleteMany({where:{id:variableId,projectId:id}});return NextResponse.json({ok:true})}
