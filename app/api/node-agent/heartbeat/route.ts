@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { authenticateAgent } from "@/lib/node-agent";
+import type { ServerHealth } from "@prisma/client";
 
 const healthValues=["UNKNOWN","HEALTHY","DEGRADED","UNHEALTHY"] as const;
 
@@ -12,7 +13,7 @@ export async function POST(request:Request){
   const memory=Math.max(0,Number(b.memoryUsedGb||0));
   const storage=Math.max(0,Number(b.storageUsedGb||0));
   const requested=String(b.health||"HEALTHY");
-  const health=healthValues.includes(requested as typeof healthValues[number])?requested:"UNKNOWN";
+  const health:ServerHealth=healthValues.includes(requested as typeof healthValues[number])?requested as ServerHealth:"UNKNOWN";
   const memoryPct=server.memoryGb?memory/server.memoryGb*100:0;
   const storagePct=server.storageGb?storage/server.storageGb*100:0;
   const degradedCpu=Number(process.env.NODE_DEGRADED_CPU_PERCENT||85);
@@ -26,6 +27,6 @@ export async function POST(request:Request){
     health:computedHealth,
     cpuUsedPercent:cpu,memoryUsedGb:memory,storageUsedGb:storage,
     agentVersion:b.agentVersion?String(b.agentVersion):server.agentVersion
-  }});
+  },omit:{agentTokenHash:true}});
   return NextResponse.json({ok:true,server:updated});
 }

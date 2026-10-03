@@ -6,7 +6,8 @@ export async function selectDeploymentServer(){
   const cutoff=new Date(Date.now()-staleSeconds*1000);
   const servers=await prisma.server.findMany({
     where:{active:true,status:"ONLINE",health:{in:["HEALTHY","DEGRADED"]},lastHeartbeatAt:{gte:cutoff}},
-    orderBy:[{health:"asc"},{cpuUsedPercent:"asc"},{memoryUsedGb:"asc"},{storageUsedGb:"asc"}]
+    orderBy:[{health:"asc"},{cpuUsedPercent:"asc"},{memoryUsedGb:"asc"},{storageUsedGb:"asc"}],
+    omit:{agentTokenHash:true}
   });
   const maxCpu=Number(process.env.SCHEDULER_MAX_CPU_PERCENT??85);
   const maxMemory=Number(process.env.SCHEDULER_MAX_MEMORY_PERCENT??0.85);
@@ -94,8 +95,8 @@ export async function recoverStaleDeployments(){
       await deploymentQueue.add("deploy",{
         deploymentId:deployment.id,
         projectId:deployment.projectId,
-        repo:deployment.project.repositoryUrl,
-        branch:deployment.project.repositoryBranch,
+        repositoryUrl:deployment.project.repositoryUrl,
+        repositoryBranch:deployment.project.repositoryBranch,
         commitSha:deployment.commitSha,
         serverId:server.id,
         serverHostname:server.hostname

@@ -4,7 +4,7 @@ import { requireAdmin } from "@/lib/admin";
 
 export async function GET(){
   const gate=await requireAdmin(); if(gate.response) return gate.response;
-  const servers=await prisma.server.findMany({orderBy:{createdAt:"desc"}});
+  const servers=await prisma.server.findMany({orderBy:{createdAt:"desc"},omit:{agentTokenHash:true}});
   return NextResponse.json({servers});
 }
 
@@ -22,6 +22,6 @@ export async function POST(request:Request){
   const reservedMemoryGb=Math.max(0,Number(body.reservedMemoryGb||1));
   const reservedStorageGb=Math.max(0,Number(body.reservedStorageGb||5));
   if(!name||!hostname||!region) return NextResponse.json({error:"name, hostname and region are required."},{status:400});
-  const server=await prisma.server.create({data:{name,hostname,region,cpuCores,memoryGb,storageGb,maxConcurrentDeployments,reservedCpuPercent,reservedMemoryGb,reservedStorageGb}});
+  const server=await prisma.server.create({data:{name,hostname,region,cpuCores,memoryGb,storageGb,maxConcurrentDeployments,reservedCpuPercent,reservedMemoryGb,reservedStorageGb},omit:{agentTokenHash:true}});
   return NextResponse.json({server},{status:201});
 }

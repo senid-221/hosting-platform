@@ -1,4 +1,4 @@
-import { createHash, randomBytes } from "node:crypto";
+import { createHash, randomBytes, timingSafeEqual } from "node:crypto";
 import { prisma } from "@/lib/prisma";
 
 export function hashAgentToken(token:string){
@@ -7,6 +7,13 @@ export function hashAgentToken(token:string){
 
 export function createAgentToken(){
   return randomBytes(32).toString("hex");
+}
+
+export function tokensMatch(provided:string|null|undefined,expected:string|undefined){
+  if(!provided||!expected) return false;
+  const a=Buffer.from(provided);
+  const b=Buffer.from(expected);
+  return a.length===b.length&&timingSafeEqual(a,b);
 }
 
 export async function authenticateAgent(request:Request){

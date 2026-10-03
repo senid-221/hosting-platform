@@ -5,7 +5,7 @@ import { prisma } from "@/lib/prisma";
 export async function GET(_:Request,{params}:{params:Promise<{id:string}>}) {
   const user=await getCurrentUser(); if(!user) return NextResponse.json({error:"Unauthorized"},{status:401});
   const {id}=await params;
-  const domain=await prisma.domain.findFirst({where:{id,project:{userId:user.id}},include:{records:true}});
+  const domain=await prisma.domain.findFirst({where:{id,userId:user.id},include:{records:true}});
   if(!domain) return NextResponse.json({error:"Domain not found."},{status:404});
   return NextResponse.json({records:domain.records});
 }
@@ -13,7 +13,7 @@ export async function GET(_:Request,{params}:{params:Promise<{id:string}>}) {
 export async function POST(request:Request,{params}:{params:Promise<{id:string}>}) {
   const user=await getCurrentUser(); if(!user) return NextResponse.json({error:"Unauthorized"},{status:401});
   const {id}=await params;
-  const domain=await prisma.domain.findFirst({where:{id,project:{userId:user.id}}});
+  const domain=await prisma.domain.findFirst({where:{id,userId:user.id}});
   if(!domain) return NextResponse.json({error:"Domain not found."},{status:404});
   const body=await request.json();
   const type=String(body.type??"").toUpperCase();

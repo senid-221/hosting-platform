@@ -10,6 +10,7 @@ export async function POST(request: Request, {params}:{params:Promise<{id:string
   const {id}=await params;
   const project=await prisma.project.findFirst({where:{id,userId:user.id}});
   if(!project) return NextResponse.json({error:"Project not found."},{status:404});
+  if(!project.repositoryUrl) return NextResponse.json({error:"Connect a Git repository before deploying."},{status:400});
 
   let commitSha:string|undefined;
   try {

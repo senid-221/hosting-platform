@@ -1,319 +1,448 @@
-generator client { provider = "prisma-client-js" }
-datasource db { provider = "postgresql" url = env("DATABASE_URL") }
+generator client {
+  provider = "prisma-client-js"
+}
 
-enum UserRole { CUSTOMER ADMIN }
-enum ProjectStatus { DRAFT BUILDING RUNNING FAILED STOPPED }
-enum DeploymentStatus { QUEUED BUILDING DEPLOYING READY FAILED CANCELED }
-enum SubscriptionStatus { TRIALING ACTIVE PAST_DUE CANCELED }
-enum InvoiceStatus { DRAFT OPEN PAID PAST_DUE VOID }
-enum PaymentStatus { PENDING SUCCEEDED FAILED CANCELED }
-enum UsageMetricType { STORAGE BANDWIDTH DATABASES WEBSITES EMAIL }
-enum ServerStatus { ONLINE OFFLINE DRAINING MAINTENANCE }
-enum ServerHealth { UNKNOWN HEALTHY DEGRADED UNHEALTHY }
-enum ServerDrainReason { NONE AUTO_HEALTH ADMIN }
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum UserRole {
+  CUSTOMER
+  ADMIN
+}
+
+enum ProjectStatus {
+  DRAFT
+  BUILDING
+  RUNNING
+  FAILED
+  STOPPED
+}
+
+enum DeploymentStatus {
+  QUEUED
+  BUILDING
+  DEPLOYING
+  READY
+  FAILED
+  CANCELED
+}
+
+enum SubscriptionStatus {
+  TRIALING
+  ACTIVE
+  PAST_DUE
+  CANCELED
+}
+
+enum InvoiceStatus {
+  DRAFT
+  OPEN
+  PAID
+  PAST_DUE
+  VOID
+}
+
+enum PaymentStatus {
+  PENDING
+  SUCCEEDED
+  FAILED
+  CANCELED
+}
+
+enum UsageMetricType {
+  STORAGE
+  BANDWIDTH
+  DATABASES
+  WEBSITES
+  EMAIL
+}
+
+enum ServerStatus {
+  ONLINE
+  OFFLINE
+  DRAINING
+  MAINTENANCE
+}
+
+enum ServerHealth {
+  UNKNOWN
+  HEALTHY
+  DEGRADED
+  UNHEALTHY
+}
+
+enum ServerDrainReason {
+  NONE
+  AUTO_HEALTH
+  ADMIN
+}
+
+enum RuntimeCommandType {
+  RESTART
+  STOP
+}
+
+enum RuntimeCommandStatus {
+  QUEUED
+  RUNNING
+  SUCCEEDED
+  FAILED
+}
+
+enum RuntimeEventType {
+  HEALTH_FAILURE
+  AUTO_HEAL_STARTED
+  AUTO_HEAL_SUCCEEDED
+  AUTO_HEAL_FAILED
+  MANUAL_RESTART
+  MANUAL_STOP
+}
+
+enum DnsRecordType {
+  A
+  AAAA
+  CNAME
+  TXT
+  MX
+  NS
+}
+
+enum DatabaseEngine {
+  POSTGRESQL
+  MYSQL
+  REDIS
+}
+
+enum BackupType {
+  PROJECT
+  DATABASE
+  FULL
+}
+
+enum BackupStatus {
+  QUEUED
+  RUNNING
+  COMPLETED
+  FAILED
+  RESTORING
+  RESTORED
+}
 
 model User {
-  id String @id @default(cuid())
-  email String @unique
-  name String?
-  image String?
-  passwordHash String?
-  role UserRole @default(CUSTOMER)
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-  projects Project[]
-  subscriptions Subscription[]
-  sessions Session[]
-  invoices Invoice[]
-  payments Payment[]
-  usageRecords UsageRecord[]
+  id              String           @id @default(cuid())
+  email           String           @unique
+  name            String?
+  image           String?
+  passwordHash    String?
+  role            UserRole         @default(CUSTOMER)
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime         @updatedAt
+  projects        Project[]
+  subscriptions   Subscription[]
+  sessions        Session[]
+  invoices        Invoice[]
+  payments        Payment[]
+  usageRecords    UsageRecord[]
   hostedDatabases HostedDatabase[]
+  domains         Domain[]
 }
+
 model Session {
-  id String @id @default(cuid())
-  tokenHash String @unique
-  userId String
-  user User @relation(fields:[userId], references:[id], onDelete:Cascade)
+  id        String   @id @default(cuid())
+  tokenHash String   @unique
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   expiresAt DateTime
   createdAt DateTime @default(now())
 }
+
 model Project {
-  id String @id @default(cuid())
-  name String
-  slug String @unique
-  repositoryUrl String?
-  repositoryBranch String @default("main")
-  framework String?
-  buildCommand String?
-  startCommand String?
-  port Int?
-  runtimePort Int?
-  runtimeContainer String?
-  healthPath String @default("/")
-  status ProjectStatus @default(DRAFT)
-  publicUrl String?
-  userId String
-  user User @relation(fields:[userId], references:[id], onDelete:Cascade)
-  deployments Deployment[]
+  id                   String                @id @default(cuid())
+  name                 String
+  slug                 String                @unique
+  repositoryUrl        String?
+  repositoryBranch     String                @default("main")
+  framework            String?
+  buildCommand         String?
+  startCommand         String?
+  port                 Int?
+  runtimePort          Int?
+  runtimeContainer     String?
+  healthPath           String                @default("/")
+  status               ProjectStatus         @default(DRAFT)
+  publicUrl            String?
+  userId               String
+  user                 User                  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  deployments          Deployment[]
   environmentVariables EnvironmentVariable[]
-  domains Domain[]
-  files FileNode[]
-  backups Backup[]
-  runtimeCommands RuntimeCommand[]
-  runtimeEvents RuntimeEvent[]
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  domains              Domain[]
+  files                FileNode[]
+  backups              Backup[]
+  runtimeCommands      RuntimeCommand[]
+  runtimeEvents        RuntimeEvent[]
+  createdAt            DateTime              @default(now())
+  updatedAt            DateTime              @updatedAt
 }
-enum RuntimeCommandType { RESTART STOP }
-enum RuntimeCommandStatus { QUEUED RUNNING SUCCEEDED FAILED }
-enum RuntimeEventType { HEALTH_FAILURE AUTO_HEAL_STARTED AUTO_HEAL_SUCCEEDED AUTO_HEAL_FAILED MANUAL_RESTART MANUAL_STOP }
 
 model RuntimeCommand {
-  id String @id @default(cuid())
-  projectId String
-  project Project @relation(fields:[projectId], references:[id], onDelete:Cascade)
-  serverId String?
-  server Server? @relation(fields:[serverId], references:[id], onDelete:SetNull)
-  type RuntimeCommandType
-  status RuntimeCommandStatus @default(QUEUED)
-  autoHeal Boolean @default(false)
-  attempt Int @default(1)
-  maxAttempts Int @default(3)
-  output String?
+  id           String               @id @default(cuid())
+  projectId    String
+  project      Project              @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  serverId     String?
+  server       Server?              @relation(fields: [serverId], references: [id], onDelete: SetNull)
+  type         RuntimeCommandType
+  status       RuntimeCommandStatus @default(QUEUED)
+  autoHeal     Boolean              @default(false)
+  attempt      Int                  @default(1)
+  maxAttempts  Int                  @default(3)
+  output       String?
   errorMessage String?
-  createdAt DateTime @default(now())
-  startedAt DateTime?
-  finishedAt DateTime?
-  @@index([projectId,createdAt])
-  @@index([status,createdAt])
+  createdAt    DateTime             @default(now())
+  startedAt    DateTime?
+  finishedAt   DateTime?
+
+  @@index([projectId, createdAt])
+  @@index([status, createdAt])
 }
 
 model RuntimeEvent {
-  id String @id @default(cuid())
+  id        String           @id @default(cuid())
   projectId String
-  project Project @relation(fields:[projectId], references:[id], onDelete:Cascade)
-  serverId String?
-  server Server? @relation(fields:[serverId], references:[id], onDelete:SetNull)
-  type RuntimeEventType
-  message String
-  createdAt DateTime @default(now())
-  @@index([projectId,createdAt])
-  @@index([type,createdAt])
+  project   Project          @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  serverId  String?
+  server    Server?          @relation(fields: [serverId], references: [id], onDelete: SetNull)
+  type      RuntimeEventType
+  message   String
+  createdAt DateTime         @default(now())
+
+  @@index([projectId, createdAt])
+  @@index([type, createdAt])
 }
 
 model Deployment {
-  id String @id @default(cuid())
-  projectId String
-  project Project @relation(fields:[projectId], references:[id], onDelete:Cascade)
-  serverId String?
-  server Server? @relation(fields:[serverId], references:[id], onDelete:SetNull)
-  commitSha String?
-  status DeploymentStatus @default(QUEUED)
-  buildLog String?
-  runtimeLog String?
-  startedAt DateTime?
-  finishedAt DateTime?
+  id          String           @id @default(cuid())
+  projectId   String
+  project     Project          @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  serverId    String?
+  server      Server?          @relation(fields: [serverId], references: [id], onDelete: SetNull)
+  commitSha   String?
+  status      DeploymentStatus @default(QUEUED)
+  buildLog    String?
+  runtimeLog  String?
+  startedAt   DateTime?
+  finishedAt  DateTime?
   heartbeatAt DateTime?
-  retryCount Int @default(0)
-  maxRetries Int @default(2)
-  createdAt DateTime @default(now())
-  @@index([status,createdAt])
-  @@index([serverId,status])
+  retryCount  Int              @default(0)
+  maxRetries  Int              @default(2)
+  createdAt   DateTime         @default(now())
+
+  @@index([status, createdAt])
+  @@index([serverId, status])
 }
+
 model EnvironmentVariable {
-  id String @id @default(cuid())
-  projectId String
-  project Project @relation(fields:[projectId], references:[id], onDelete:Cascade)
-  key String
-  value String
-  environment String @default("production")
-  createdAt DateTime @default(now())
-  @@unique([projectId,key,environment])
+  id          String   @id @default(cuid())
+  projectId   String
+  project     Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  key         String
+  value       String
+  environment String   @default("production")
+  createdAt   DateTime @default(now())
+
+  @@unique([projectId, key, environment])
 }
-enum DnsRecordType { A AAAA CNAME TXT MX NS }
 
 model Domain {
-  id String @id @default(cuid())
-  name String @unique
-  verified Boolean @default(false)
+  id                String      @id @default(cuid())
+  name              String      @unique
+  verified          Boolean     @default(false)
   verificationToken String?
-  sslEnabled Boolean @default(false)
-  sslStatus String @default("PENDING")
-  projectId String?
-  project Project? @relation(fields:[projectId], references:[id], onDelete:SetNull)
-  records DnsRecord[]
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  sslEnabled        Boolean     @default(false)
+  sslStatus         String      @default("PENDING")
+  userId            String
+  user              User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  projectId         String?
+  project           Project?    @relation(fields: [projectId], references: [id], onDelete: SetNull)
+  records           DnsRecord[]
+  createdAt         DateTime    @default(now())
+  updatedAt         DateTime    @updatedAt
+
+  @@index([userId])
 }
 
 model DnsRecord {
-  id String @id @default(cuid())
-  domainId String
-  domain Domain @relation(fields:[domainId], references:[id], onDelete:Cascade)
-  type DnsRecordType
-  name String
-  value String
-  ttl Int @default(3600)
-  priority Int?
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  id        String        @id @default(cuid())
+  domainId  String
+  domain    Domain        @relation(fields: [domainId], references: [id], onDelete: Cascade)
+  type      DnsRecordType
+  name      String
+  value     String
+  ttl       Int           @default(3600)
+  priority  Int?
+  createdAt DateTime      @default(now())
+  updatedAt DateTime      @updatedAt
+
   @@index([domainId])
 }
+
 model Plan {
-  id String @id @default(cuid())
-  name String @unique
-  monthlyPrice Int
-  storageGb Int
-  bandwidthGb Int
-  websites Int
-  databases Int
-  mailboxes Int
+  id            String         @id @default(cuid())
+  name          String         @unique
+  monthlyPrice  Int
+  storageGb     Int
+  bandwidthGb   Int
+  websites      Int
+  databases     Int
+  mailboxes     Int
   subscriptions Subscription[]
 }
+
 model Subscription {
-  id String @id @default(cuid())
-  userId String
-  planId String
-  status SubscriptionStatus @default(TRIALING)
-  user User @relation(fields:[userId], references:[id], onDelete:Cascade)
-  plan Plan @relation(fields:[planId], references:[id])
-  startedAt DateTime @default(now())
-  renewsAt DateTime?
-  invoices Invoice[]
-}
-model Server {
-  id String @id @default(cuid())
-  name String @unique
-  hostname String
-  region String
-  cpuCores Int
-  memoryGb Int
-  storageGb Int
-  maxConcurrentDeployments Int @default(4)
-  reservedCpuPercent Float @default(10)
-  reservedMemoryGb Float @default(1)
-  reservedStorageGb Float @default(5)
-  active Boolean @default(true)
-  status ServerStatus @default(ONLINE)
-  health ServerHealth @default(UNKNOWN)
-  drainReason ServerDrainReason @default(NONE)
-  lastHeartbeatAt DateTime?
-  cpuUsedPercent Float @default(0)
-  memoryUsedGb Float @default(0)
-  storageUsedGb Float @default(0)
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-  agentTokenHash String?
-  agentVersion String?
-  deployments Deployment[]
-  runtimeCommands RuntimeCommand[]
-  runtimeEvents RuntimeEvent[]
+  id        String             @id @default(cuid())
+  userId    String
+  planId    String
+  status    SubscriptionStatus @default(TRIALING)
+  user      User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+  plan      Plan               @relation(fields: [planId], references: [id])
+  startedAt DateTime           @default(now())
+  renewsAt  DateTime?
+  invoices  Invoice[]
 }
 
-enum DatabaseEngine { POSTGRESQL MYSQL REDIS }
+model Server {
+  id                       String            @id @default(cuid())
+  name                     String            @unique
+  hostname                 String
+  region                   String
+  cpuCores                 Int
+  memoryGb                 Int
+  storageGb                Int
+  maxConcurrentDeployments Int               @default(4)
+  reservedCpuPercent       Float             @default(10)
+  reservedMemoryGb         Float             @default(1)
+  reservedStorageGb        Float             @default(5)
+  active                   Boolean           @default(true)
+  status                   ServerStatus      @default(ONLINE)
+  health                   ServerHealth      @default(UNKNOWN)
+  drainReason              ServerDrainReason @default(NONE)
+  lastHeartbeatAt          DateTime?
+  cpuUsedPercent           Float             @default(0)
+  memoryUsedGb             Float             @default(0)
+  storageUsedGb            Float             @default(0)
+  createdAt                DateTime          @default(now())
+  updatedAt                DateTime          @updatedAt
+  agentTokenHash           String?
+  agentVersion             String?
+  deployments              Deployment[]
+  runtimeCommands          RuntimeCommand[]
+  runtimeEvents            RuntimeEvent[]
+}
 
 model HostedDatabase {
-  id String @id @default(cuid())
-  name String
-  engine DatabaseEngine
-  host String?
-  port Int?
-  username String
-  passwordHash String
-  databaseName String
-  storageGb Int @default(5)
-  maxConnections Int @default(20)
-  status String @default("PROVISIONING")
-  userId String
-  user User @relation(fields:[userId], references:[id], onDelete:Cascade)
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-  backups Backup[]
-  @@unique([userId,name])
+  id             String         @id @default(cuid())
+  name           String
+  engine         DatabaseEngine
+  host           String?
+  port           Int?
+  username       String
+  passwordHash   String
+  databaseName   String
+  storageGb      Int            @default(5)
+  maxConnections Int            @default(20)
+  status         String         @default("PROVISIONING")
+  userId         String
+  user           User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt      DateTime       @default(now())
+  updatedAt      DateTime       @updatedAt
+  backups        Backup[]
+
+  @@unique([userId, name])
 }
 
 model FileNode {
-  id String @id @default(cuid())
-  projectId String
-  project Project @relation(fields:[projectId], references:[id], onDelete:Cascade)
-  path String
-  type String
-  sizeBytes BigInt @default(0)
+  id         String   @id @default(cuid())
+  projectId  String
+  project    Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  path       String
+  type       String
+  sizeBytes  BigInt   @default(0)
   storageKey String
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-  @@unique([projectId,path])
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@unique([projectId, path])
   @@index([projectId])
 }
 
-
-enum BackupType { PROJECT DATABASE FULL }
-enum BackupStatus { QUEUED RUNNING COMPLETED FAILED RESTORING RESTORED }
-
 model Backup {
-  id String @id @default(cuid())
-  type BackupType
-  status BackupStatus @default(QUEUED)
-  projectId String?
-  project Project? @relation(fields:[projectId], references:[id], onDelete:Cascade)
-  databaseId String?
-  database HostedDatabase? @relation(fields:[databaseId], references:[id], onDelete:Cascade)
-  storageKey String?
-  sizeBytes BigInt @default(0)
-  checksum String?
-  retentionDays Int @default(30)
-  expiresAt DateTime?
-  errorMessage String?
-  createdAt DateTime @default(now())
-  completedAt DateTime?
-  @@index([projectId,createdAt])
-  @@index([databaseId,createdAt])
+  id            String          @id @default(cuid())
+  type          BackupType
+  status        BackupStatus    @default(QUEUED)
+  projectId     String?
+  project       Project?        @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  databaseId    String?
+  database      HostedDatabase? @relation(fields: [databaseId], references: [id], onDelete: Cascade)
+  storageKey    String?
+  sizeBytes     BigInt          @default(0)
+  checksum      String?
+  retentionDays Int             @default(30)
+  expiresAt     DateTime?
+  errorMessage  String?
+  createdAt     DateTime        @default(now())
+  completedAt   DateTime?
+
+  @@index([projectId, createdAt])
+  @@index([databaseId, createdAt])
 }
 
-
 model Invoice {
-  id String @id @default(cuid())
-  number String @unique
-  userId String
+  id             String        @id @default(cuid())
+  number         String        @unique
+  userId         String
   subscriptionId String?
-  amount Int
-  currency String @default("USD")
-  status InvoiceStatus @default(OPEN)
-  dueAt DateTime?
-  paidAt DateTime?
-  user User @relation(fields:[userId], references:[id], onDelete:Cascade)
-  subscription Subscription? @relation(fields:[subscriptionId], references:[id], onDelete:SetNull)
-  payments Payment[]
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-  @@index([userId,createdAt])
+  amount         Int
+  currency       String        @default("USD")
+  status         InvoiceStatus @default(OPEN)
+  dueAt          DateTime?
+  paidAt         DateTime?
+  user           User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  subscription   Subscription? @relation(fields: [subscriptionId], references: [id], onDelete: SetNull)
+  payments       Payment[]
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
+
+  @@index([userId, createdAt])
 }
 
 model Payment {
-  id String @id @default(cuid())
-  userId String
-  invoiceId String?
-  provider String
+  id         String        @id @default(cuid())
+  userId     String
+  invoiceId  String?
+  provider   String
   externalId String?
-  amount Int
-  currency String @default("USD")
-  status PaymentStatus @default(PENDING)
-  user User @relation(fields:[userId], references:[id], onDelete:Cascade)
-  invoice Invoice? @relation(fields:[invoiceId], references:[id], onDelete:SetNull)
-  createdAt DateTime @default(now())
-  @@index([userId,createdAt])
+  amount     Int
+  currency   String        @default("USD")
+  status     PaymentStatus @default(PENDING)
+  user       User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  invoice    Invoice?      @relation(fields: [invoiceId], references: [id], onDelete: SetNull)
+  createdAt  DateTime      @default(now())
+
+  @@index([userId, createdAt])
   @@index([invoiceId])
 }
 
 model UsageRecord {
-  id String @id @default(cuid())
-  userId String
-  metric UsageMetricType
-  value Float
-  unit String
+  id          String          @id @default(cuid())
+  userId      String
+  metric      UsageMetricType
+  value       Float
+  unit        String
   periodStart DateTime
-  periodEnd DateTime
-  user User @relation(fields:[userId], references:[id], onDelete:Cascade)
-  createdAt DateTime @default(now())
-  @@index([userId,metric,periodStart])
+  periodEnd   DateTime
+  user        User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt   DateTime        @default(now())
+
+  @@index([userId, metric, periodStart])
 }

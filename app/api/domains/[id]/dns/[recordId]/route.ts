@@ -3,7 +3,7 @@ import { getCurrentUser } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 
 async function owned(userId:string,domainId:string,recordId:string){
-  return prisma.dnsRecord.findFirst({where:{id:recordId,domainId,domain:{project:{userId}}}});
+  return prisma.dnsRecord.findFirst({where:{id:recordId,domainId,domain:{userId}}});
 }
 
 export async function PATCH(request:Request,{params}:{params:Promise<{id:string;recordId:string}>}) {

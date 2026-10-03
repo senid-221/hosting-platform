@@ -13,7 +13,8 @@ export async function GET(_: Request, { params }: { params: Promise<{ id: string
     where: { id },
     include: {
       _count: { select: { deployments: true, runtimeCommands: true, runtimeEvents: true } }
-    }
+    },
+    omit: { agentTokenHash: true }
   });
   if (!server) return NextResponse.json({ error: "Server not found." }, { status: 404 });
 
@@ -73,7 +74,7 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
     return NextResponse.json({ error: "Invalid node action." }, { status: 400 });
   }
 
-  const server = await prisma.server.update({ where: { id }, data });
+  const server = await prisma.server.update({ where: { id }, data, omit: { agentTokenHash: true } });
   return NextResponse.json({ server });
 }
 

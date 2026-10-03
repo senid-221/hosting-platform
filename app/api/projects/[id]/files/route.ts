@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import crypto from "node:crypto";
 import { getCurrentUser } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { jsonSafe } from "@/lib/json";
 
 export async function GET(request:Request,{params}:{params:Promise<{id:string}>}){
   const user=await getCurrentUser();
@@ -12,7 +13,7 @@ export async function GET(request:Request,{params}:{params:Promise<{id:string}>}
   const project=await prisma.project.findFirst({where:{id,userId:user.id}});
   if(!project) return NextResponse.json({error:"Project not found."},{status:404});
   const files=await prisma.fileNode.findMany({where:{projectId:id,path:{startsWith:prefix}},orderBy:{path:"asc"}});
-  return NextResponse.json({files});
+  return NextResponse.json({files:jsonSafe(files)});
 }
 
 export async function POST(request:Request,{params}:{params:Promise<{id:string}>}){
@@ -26,5 +27,5 @@ export async function POST(request:Request,{params}:{params:Promise<{id:string}>
   if(!input.startsWith("/") || input.includes("..")) return NextResponse.json({error:"Invalid file path."},{status:400});
   const type=body.type==="directory" ? "directory" : "file";
   const node=await prisma.fileNode.create({data:{projectId:id,path:input,type,sizeBytes:Number(body.sizeBytes||0),storageKey:crypto.randomUUID()}});
-  return NextResponse.json({file:node},{status:201});
+  return NextResponse.json({file:jsonSafe(node)},{status:201});
 }

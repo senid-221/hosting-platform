@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { getCurrentUser } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { jsonSafe } from "@/lib/json";
 
 async function owned(userId:string,projectId:string,fileId:string){
   return prisma.fileNode.findFirst({where:{id:fileId,projectId,project:{userId}}});
@@ -16,7 +17,7 @@ export async function PATCH(request:Request,{params}:{params:Promise<{id:string;
   const next=String(body.path || file.path);
   if(!next.startsWith("/") || next.includes("..")) return NextResponse.json({error:"Invalid file path."},{status:400});
   const updated=await prisma.fileNode.update({where:{id:fileId},data:{path:next}});
-  return NextResponse.json({file:updated});
+  return NextResponse.json({file:jsonSafe(updated)});
 }
 
 export async function DELETE(_:Request,{params}:{params:Promise<{id:string;fileId:string}>}){

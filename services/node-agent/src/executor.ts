@@ -23,13 +23,11 @@ async function renderProxyConfig(input:{container:string;port:number;hostname?:s
   const block=`# HOSTING_PROJECT:${input.container}\n${hosts.join(" ")} {\n  reverse_proxy ${input.container}:${input.port} {\n    health_uri ${input.healthPath||"/"}\n    health_interval 10s\n    health_timeout 3s\n  }\n}\n`;
   let current=""; try{current=await readFile(CADDYFILE,"utf8");}catch{}
   const marker=`# HOSTING_PROJECT:${input.container}`;
-  const pattern=new RegExp(`${marker}[\\s\\S]*?(?=\\n# HOSTING_PROJECT:|$)`,"g");
+  const pattern=new RegExp(`${marker.replace(/[.*+?^${}()|[\]\\]/g,"\\$&")}[\\s\\S]*?(?=\\n# HOSTING_PROJECT:|$)`,"g");
   const next=current.replace(pattern,"").trim();
   await mkdir(path.dirname(CADDYFILE),{recursive:true});
   await writeFile(CADDYFILE,(next?next+"\n\n":"")+block,"utf8");
-  await exec("docker",["exec",CADDY_CONTAINER,"caddy","reload","--config",CADDYFILE]).catch(async()=>{
-    await exec("docker",["exec",CADDY_CONTAINER,"caddy","reload","--config","/etc/caddy/Caddyfile"]); 
-  });
+  await exec("docker",["exec",CADDY_CONTAINER,"caddy","reload","--config",CADDYFILE_CONTAINER]);
 }
 async function api(id:string,status:string,extra:Record<string,unknown>={}){
   const response=await fetch(CONTROL_PLANE+"/api/node-agent/deployments/"+id+"/status",{

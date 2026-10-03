@@ -10,7 +10,7 @@ export async function GET(request:Request){
   if(!server)return NextResponse.json({error:"Unauthorized node agent."},{status:401});
   const projects=await prisma.project.findMany({
     where:{status:"RUNNING",runtimeContainer:{not:null},deployments:{some:{serverId:server.id,status:"READY"}}},
-    select:{id:true,runtimeContainer:true,healthPath:true}
+    select:{id:true,runtimeContainer:true,runtimePort:true,healthPath:true}
   });
   return NextResponse.json({projects});
 }

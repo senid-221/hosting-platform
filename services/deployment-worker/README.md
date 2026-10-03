@@ -39,6 +39,14 @@ docker network create hosting-runtime
 
 The worker host needs Docker, Git, Node.js and access to PostgreSQL/Redis.
 
+The image is built from the repository root because it needs the shared Prisma schema:
+
+```bash
+docker build -f services/deployment-worker/Dockerfile -t hosting-deployment-worker .
+```
+
+`DEPLOY_WORK_ROOT` (default `/var/lib/hosting-builds`) is where build workspaces are created; point it at a volume with enough disk for clones and image layers.
+
 ## Next step
 
 The reverse-proxy service will map each READY runtime to a stable hostname, perform health checks, and terminate TLS without exposing Docker directly to customers.

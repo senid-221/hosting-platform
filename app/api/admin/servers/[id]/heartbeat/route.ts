@@ -13,8 +13,8 @@ export async function POST(request:Request,{params}:{params:Promise<{id:string}>
       cpuUsedPercent:Number(body.cpuUsedPercent||0),
       memoryUsedGb:Number(body.memoryUsedGb||0),
       storageUsedGb:Number(body.storageUsedGb||0),
-
-    }
+    },
+    omit:{agentTokenHash:true}
   });
   return NextResponse.json({server});
 }

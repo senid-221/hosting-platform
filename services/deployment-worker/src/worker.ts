@@ -4,8 +4,7 @@ import { PrismaClient } from "@prisma/client";
 import { execFile } from "node:child_process";
 import { promisify } from "node:util";
 import { randomUUID } from "node:crypto";
-import { mkdtemp, rm } from "node:fs/promises";
-import { tmpdir } from "node:os";
+import { mkdir, mkdtemp, rm } from "node:fs/promises";
 import path from "node:path";
 
 const exec = promisify(execFile);
@@ -18,6 +17,9 @@ const WORK_ROOT = process.env.DEPLOY_WORK_ROOT ?? "/var/lib/hosting-builds";
 const MEMORY = process.env.DEPLOY_MEMORY ?? "768m";
 const CPU = process.env.DEPLOY_CPU ?? "1.0";
 const BUILD_TIMEOUT = Number(process.env.DEPLOY_BUILD_TIMEOUT_MS ?? 10 * 60 * 1000);
+// Must stay well under DEPLOYMENT_HEARTBEAT_TIMEOUT_SECONDS (default 120s) or the
+// node-health worker treats an in-progress build as abandoned and requeues it.
+const HEARTBEAT_INTERVAL = Number(process.env.DEPLOYMENT_HEARTBEAT_INTERVAL_MS ?? 30000);
 
 function safeImage(id:string) {
   return `hosting-app:${id.replace(/[^a-zA-Z0-9_.-]/g,"-")}`;
@@ -28,7 +30,7 @@ async function run(command:string,args:string[],timeout=BUILD_TIMEOUT) {
 }
 
 async function update(id:string,data:Record<string,unknown>) {
-  await prisma.deployment.update({where:{id},data});
+  await prisma.deployment.update({where:{id},data:{...data,heartbeatAt:new Date()}});
 }
 
 async function processDeployment(job:Job) {
@@ -42,10 +44,16 @@ async function processDeployment(job:Job) {
     if (!server || !server.active || server.status==="DRAINING" || server.status==="MAINTENANCE" || server.health==="UNHEALTHY") throw new Error("Assigned deployment server is no longer available.");
   }
 
-  const dir = await mkdtemp(path.join(tmpdir(),"hosting-build-"));
+  await mkdir(WORK_ROOT,{recursive:true});
+  const dir = await mkdtemp(path.join(WORK_ROOT,"build-"));
   const image=safeImage(projectId);
   const container=`hosting-runtime-${projectId}`;
   let log="";
+  // The docker build below can block for the whole BUILD_TIMEOUT, so the heartbeat
+  // needs its own timer rather than riding along with the status updates.
+  const heartbeat=setInterval(()=>{
+    prisma.deployment.update({where:{id:deploymentId},data:{heartbeatAt:new Date()}}).catch(()=>{});
+  },HEARTBEAT_INTERVAL);
 
   try {
     await update(deploymentId,{status:"BUILDING",startedAt:new Date(),buildLog:"Cloning repository…\n"});
@@ -94,6 +102,7 @@ async function processDeployment(job:Job) {
     await run("docker",["rm","-f",container]).catch(()=>{});
     throw error;
   } finally {
+    clearInterval(heartbeat);
     await rm(dir,{recursive:true,force:true}).catch(()=>{});
   }
 }
