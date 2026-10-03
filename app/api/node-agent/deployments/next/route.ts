@@ -1,0 +1,31 @@
+import { NextResponse } from "next/server";
+import { prisma } from "@/lib/prisma";
+import { authenticateAgent } from "@/lib/node-agent";
+
+export async function GET(request:Request){
+  const server=await authenticateAgent(request);
+  if(!server) return NextResponse.json({error:"Unauthorized node agent."},{status:401});
+  if(!server.active || server.status!=="ONLINE" || server.health==="UNHEALTHY") return new NextResponse(null,{status:204});
+
+  const deployment=await prisma.deployment.findFirst({
+    where:{serverId:server.id,status:"QUEUED"},
+    include:{project:true},
+    orderBy:{createdAt:"asc"}
+  });
+  if(!deployment) return new NextResponse(null,{status:204});
+
+  const claimed=await prisma.deployment.updateMany({
+    where:{id:deployment.id,serverId:server.id,status:"QUEUED"},
+    data:{status:"BUILDING",startedAt:new Date()}
+  });
+  if(!claimed.count) return new NextResponse(null,{status:204});
+
+  return NextResponse.json({deployment:{
+    deploymentId:deployment.id,
+    projectId:deployment.projectId,
+    repositoryUrl:deployment.project.repositoryUrl,
+    repositoryBranch:deployment.project.repositoryBranch,
+    commitSha:deployment.commitSha,
+    port:deployment.project.port
+  }});
+}
