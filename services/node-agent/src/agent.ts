@@ -10,6 +10,9 @@ const pollInterval=Number(process.env.NODE_AGENT_POLL_SECONDS||5)*1000;
 const healthInterval=Number(process.env.NODE_AGENT_HEALTH_SECONDS||15)*1000;
 const diskRoot=process.env.NODE_AGENT_DISK_PATH||"/";
 const cpuCount=Math.max(1,os.cpus().length);
+const runtimeFailureThreshold=Number(process.env.NODE_RUNTIME_HEALTH_FAILURES||3);
+const runtimeGraceMs=Number(process.env.NODE_RUNTIME_HEALTH_GRACE_SECONDS||30)*1000;
+const runtimeFailures=new Map<string,number>();
 
 async function request(path:string,init:RequestInit={}){
   return fetch(CONTROL_PLANE+path,{...init,headers:{authorization:"Bearer "+TOKEN,"content-type":"application/json",...(init.headers||{})}});
@@ -61,11 +64,36 @@ async function runtimeHealthPoll(){
   const body=await response.json();
   for(const project of body.projects||[]){
     let running=false;
+    let healthy=false;
+    let withinGrace=false;
     try{
-      const output=execFileSync("docker",["inspect","--format={{.State.Running}}",project.runtimeContainer],{encoding:"utf8"});
-      running=String(output).trim()==="true";
+      const raw=execFileSync("docker",["inspect",project.runtimeContainer],{encoding:"utf8"});
+      const info=JSON.parse(raw)[0];
+      running=info?.State?.Running===true;
+      const startedAt=info?.State?.StartedAt?Date.parse(info.State.StartedAt):0;
+      withinGrace=startedAt>0 && Date.now()-startedAt<runtimeGraceMs;
+      if(running && !withinGrace && project.runtimePort){
+        const networks=info?.NetworkSettings?.Networks||{};
+        const address=Object.values(networks).map((n:any)=>n?.IPAddress).find(Boolean);
+        if(address){
+          const controller=new AbortController();
+          const timer=setTimeout(()=>controller.abort(),3000);
+          try{
+            const response=await fetch("http://"+address+":"+project.runtimePort+(project.healthPath||"/"),{signal:controller.signal,redirect:"manual"});
+            healthy=response.status>=200&&response.status<400;
+          }finally{clearTimeout(timer);}
+        }
+      }else if(running){
+        healthy=true;
+      }
     }catch{}
-    await request("/api/node-agent/runtime/health",{method:"POST",body:JSON.stringify({projectId:project.id,running})}).catch(()=>{});
+    if(healthy){
+      runtimeFailures.delete(project.id);
+    }else if(!withinGrace){
+      runtimeFailures.set(project.id,(runtimeFailures.get(project.id)||0)+1);
+    }
+    const confirmedFailure=!withinGrace && (!running || (runtimeFailures.get(project.id)||0)>=runtimeFailureThreshold);
+    await request("/api/node-agent/runtime/health",{method:"POST",body:JSON.stringify({projectId:project.id,running:!confirmedFailure})}).catch(()=>{});
   }
 }
 
