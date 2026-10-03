@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { authenticateAgent } from "@/lib/node-agent";
+import { projectHostname, projectUrl } from "@/lib/routing";
 
 export async function GET(request:Request){
   const server=await authenticateAgent(request);
