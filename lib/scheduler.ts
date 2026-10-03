@@ -26,7 +26,21 @@ export async function reconcileNodeHealth(){
   if(!stale.length)return {drained:0};
   await prisma.server.updateMany({
     where:{id:{in:stale.map(s=>s.id)}},
-    data:{status:"DRAINING",health:"UNHEALTHY"}
+    data:{status:"DRAINING",health:"UNHEALTHY",drainReason:"AUTO_HEALTH"}
   });
   return {drained:stale.length,servers:stale.map(s=>s.name)};
+}
+
+export async function recoverHealthyNodes(){
+  const staleSeconds=Number(process.env.NODE_HEARTBEAT_TIMEOUT_SECONDS??90);
+  const cutoff=new Date(Date.now()-staleSeconds*1000);
+  const recoverable=await prisma.server.findMany({
+    where:{active:true,status:"DRAINING",drainReason:"AUTO_HEALTH",lastHeartbeatAt:{gte:cutoff},health:{in:["HEALTHY","DEGRADED"]}}
+  });
+  if(!recoverable.length)return {recovered:0};
+  await prisma.server.updateMany({
+    where:{id:{in:recoverable.map(s=>s.id)}},
+    data:{status:"ONLINE",drainReason:"NONE"}
+  });
+  return {recovered:recoverable.length,servers:recoverable.map(s=>s.name)};
 }
