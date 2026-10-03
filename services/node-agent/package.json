@@ -1,0 +1,8 @@
+{
+  "name":"hosting-node-agent",
+  "private":true,
+  "version":"0.1.0",
+  "scripts":{"start":"node dist/agent.js","build":"tsc"},
+  "dependencies":{"undici":"^7.16.0"},
+  "devDependencies":{"@types/node":"^22.0.0","typescript":"^5.8.0"}
+}
