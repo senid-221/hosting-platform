@@ -1,0 +1,4 @@
+"use client";
+import {useEffect,useState} from "react";
+export default function BillingPage(){const[d,setD]=useState<any[]>([]);useEffect(()=>{fetch("/api/billing/invoices").then(r=>r.json()).then(x=>setD(x.invoices||[]))},[]);
+return <main className="service-page"><header className="service-header"><div><span className="muted">Account</span><h1>Billing</h1><p>Review subscriptions, invoices and payment status.</p></div></header><section className="service-card-panel"><div className="service-table">{d.map(x=><div className="service-row" key={x.id}><div><b>{x.number}</b><span>{x.subscription?.plan?.name||"Invoice"} · {x.currency}</span></div><strong>{x.status}</strong><b>{Number(x.amount).toFixed(2)} {x.currency}</b></div>)}{!d.length&&<div className="empty-state">No invoices yet.</div>}</div></section></main>}
