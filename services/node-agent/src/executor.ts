@@ -31,10 +31,6 @@ async function renderProxyConfig(input:{container:string;port:number;hostname?:s
     await exec("docker",["exec",CADDY_CONTAINER,"caddy","reload","--config","/etc/caddy/Caddyfile"]); 
   });
 }
-const CADDYFILE=process.env.CADDYFILE_PATH||"/etc/caddy/Caddyfile";
-const CADDY_CONTAINER=process.env.CADDY_CONTAINER||"hosting-caddy";
-const NETWORK=process.env.NODE_RUNTIME_NETWORK||"hosting-runtime";
-
 async function api(id:string,status:string,extra:Record<string,unknown>={}){
   const response=await fetch(CONTROL_PLANE+"/api/node-agent/deployments/"+id+"/status",{
     method:"POST",
