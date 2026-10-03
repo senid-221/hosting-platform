@@ -91,7 +91,7 @@ export async function executeDeployment(job:{
       image
     ]);
 
-    await renderProxyConfig({container,port:job.port||3000,hostname:job.hostname,customDomains:job.customDomains||[]});
+    await renderProxyConfig({container,port:job.port||3000,hostname:job.hostname,customDomains:job.customDomains||[],healthPath:job.healthPath});
     const inspect=await exec("docker",["inspect","-f","{{.State.Running}}",container]);
     if(inspect.stdout.trim()!=="true") throw new Error("Runtime container did not start.");
 
