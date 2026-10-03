@@ -165,3 +165,27 @@ model FileNode {
   @@unique([projectId,path])
   @@index([projectId])
 }
+
+
+enum BackupType { PROJECT DATABASE FULL }
+enum BackupStatus { QUEUED RUNNING COMPLETED FAILED RESTORING RESTORED }
+
+model Backup {
+  id String @id @default(cuid())
+  type BackupType
+  status BackupStatus @default(QUEUED)
+  projectId String?
+  project Project? @relation(fields:[projectId], references:[id], onDelete:Cascade)
+  databaseId String?
+  database HostedDatabase? @relation(fields:[databaseId], references:[id], onDelete:Cascade)
+  storageKey String?
+  sizeBytes BigInt @default(0)
+  checksum String?
+  retentionDays Int @default(30)
+  expiresAt DateTime?
+  errorMessage String?
+  createdAt DateTime @default(now())
+  completedAt DateTime?
+  @@index([projectId,createdAt])
+  @@index([databaseId,createdAt])
+}
