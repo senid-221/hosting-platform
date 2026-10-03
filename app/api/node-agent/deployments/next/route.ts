@@ -9,7 +9,7 @@ export async function GET(request:Request){
 
   const deployment=await prisma.deployment.findFirst({
     where:{serverId:server.id,status:"QUEUED"},
-    include:{project:true},
+    include:{project:{include:{domains:true}}},
     orderBy:{createdAt:"asc"}
   });
   if(!deployment) return new NextResponse(null,{status:204});
@@ -26,6 +26,10 @@ export async function GET(request:Request){
     repositoryUrl:deployment.project.repositoryUrl,
     repositoryBranch:deployment.project.repositoryBranch,
     commitSha:deployment.commitSha,
-    port:deployment.project.port
+    port:deployment.project.port,
+    healthPath:deployment.project.healthPath,
+    hostname:projectHostname(deployment.project.slug),
+    publicUrl:projectUrl(deployment.project.slug),
+    customDomains:deployment.project.domains.filter(d=>d.verified && d.projectId===deployment.projectId).map(d=>d.name)
   }});
 }
