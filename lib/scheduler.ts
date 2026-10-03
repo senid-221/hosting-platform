@@ -4,43 +4,60 @@ export async function selectDeploymentServer(){
   const staleSeconds=Number(process.env.NODE_HEARTBEAT_TIMEOUT_SECONDS??90);
   const cutoff=new Date(Date.now()-staleSeconds*1000);
   const servers=await prisma.server.findMany({
-    where:{
-      active:true,status:"ONLINE",health:{in:["HEALTHY","DEGRADED"]},
-      lastHeartbeatAt:{gte:cutoff}
-    },
+    where:{active:true,status:"ONLINE",health:{in:["HEALTHY","DEGRADED"]},lastHeartbeatAt:{gte:cutoff}},
+    include:{_count:{select:{deployments:true}}},
     orderBy:[{health:"asc"},{cpuUsedPercent:"asc"},{memoryUsedGb:"asc"},{storageUsedGb:"asc"}]
   });
-  return servers.find(s =>
-    s.cpuUsedPercent < Number(process.env.SCHEDULER_MAX_CPU_PERCENT ?? 85) &&
-    s.memoryUsedGb < s.memoryGb * Number(process.env.SCHEDULER_MAX_MEMORY_PERCENT ?? 0.85) &&
-    s.storageUsedGb < s.storageGb * Number(process.env.SCHEDULER_MAX_STORAGE_PERCENT ?? 0.85)
-  ) ?? null;
+  const maxCpu=Number(process.env.SCHEDULER_MAX_CPU_PERCENT??85);
+  const maxMemory=Number(process.env.SCHEDULER_MAX_MEMORY_PERCENT??0.85);
+  const maxStorage=Number(process.env.SCHEDULER_MAX_STORAGE_PERCENT??0.85);
+
+  return servers.find(s=>{
+    const activeDeployments=s._count.deployments;
+    const cpuAvailable=s.cpuUsedPercent+s.reservedCpuPercent<maxCpu;
+    const memoryAvailable=s.memoryUsedGb+s.reservedMemoryGb<s.memoryGb*maxMemory;
+    const storageAvailable=s.storageUsedGb+s.reservedStorageGb<s.storageGb*maxStorage;
+    const concurrencyAvailable=activeDeployments<s.maxConcurrentDeployments;
+    return cpuAvailable&&memoryAvailable&&storageAvailable&&concurrencyAvailable;
+  })??null;
+}
+
+export async function getNodeCapacity(serverId:string){
+  const server=await prisma.server.findUnique({
+    where:{id:serverId},
+    include:{_count:{select:{deployments:true,runtimeCommands:true}}}
+  });
+  if(!server)return null;
+  const activeDeployments=await prisma.deployment.count({
+    where:{serverId,status:{in:["QUEUED","BUILDING","DEPLOYING"]}}
+  });
+  return {
+    maxConcurrentDeployments:server.maxConcurrentDeployments,
+    activeDeployments,
+    availableDeploymentSlots:Math.max(0,server.maxConcurrentDeployments-activeDeployments),
+    cpuPercent:server.cpuUsedPercent,
+    reservedCpuPercent:server.reservedCpuPercent,
+    memoryPercent:server.memoryGb?server.memoryUsedGb/server.memoryGb*100:0,
+    reservedMemoryGb:server.reservedMemoryGb,
+    storagePercent:server.storageGb?server.storageUsedGb/server.storageGb*100:0,
+    reservedStorageGb:server.reservedStorageGb
+  };
 }
 
 export async function reconcileNodeHealth(){
   const staleSeconds=Number(process.env.NODE_HEARTBEAT_TIMEOUT_SECONDS??90);
   const cutoff=new Date(Date.now()-staleSeconds*1000);
-  const stale=await prisma.server.findMany({
-    where:{active:true,status:"ONLINE",OR:[{lastHeartbeatAt:null},{lastHeartbeatAt:{lt:cutoff}}]}
-  });
+  const stale=await prisma.server.findMany({where:{active:true,status:"ONLINE",OR:[{lastHeartbeatAt:null},{lastHeartbeatAt:{lt:cutoff}}]}});
   if(!stale.length)return {drained:0};
-  await prisma.server.updateMany({
-    where:{id:{in:stale.map(s=>s.id)}},
-    data:{status:"DRAINING",health:"UNHEALTHY",drainReason:"AUTO_HEALTH"}
-  });
+  await prisma.server.updateMany({where:{id:{in:stale.map(s=>s.id)}},data:{status:"DRAINING",health:"UNHEALTHY",drainReason:"AUTO_HEALTH"}});
   return {drained:stale.length,servers:stale.map(s=>s.name)};
 }
 
 export async function recoverHealthyNodes(){
   const staleSeconds=Number(process.env.NODE_HEARTBEAT_TIMEOUT_SECONDS??90);
   const cutoff=new Date(Date.now()-staleSeconds*1000);
-  const recoverable=await prisma.server.findMany({
-    where:{active:true,status:"DRAINING",drainReason:"AUTO_HEALTH",lastHeartbeatAt:{gte:cutoff},health:{in:["HEALTHY","DEGRADED"]}}
-  });
+  const recoverable=await prisma.server.findMany({where:{active:true,status:"DRAINING",drainReason:"AUTO_HEALTH",lastHeartbeatAt:{gte:cutoff},health:{in:["HEALTHY","DEGRADED"]}}});
   if(!recoverable.length)return {recovered:0};
-  await prisma.server.updateMany({
-    where:{id:{in:recoverable.map(s=>s.id)}},
-    data:{status:"ONLINE",drainReason:"NONE"}
-  });
+  await prisma.server.updateMany({where:{id:{in:recoverable.map(s=>s.id)}},data:{status:"ONLINE",drainReason:"NONE"}});
   return {recovered:recoverable.length,servers:recoverable.map(s=>s.name)};
 }
