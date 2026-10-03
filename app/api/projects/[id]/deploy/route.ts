@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { getCurrentUser } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { deploymentQueue } from "@/lib/queue";
+import { selectDeploymentServer } from "@/lib/scheduler";
 
 export async function POST(request: Request, {params}:{params:Promise<{id:string}>}) {
   const user=await getCurrentUser();
@@ -16,8 +17,11 @@ export async function POST(request: Request, {params}:{params:Promise<{id:string
     if(body.commitSha) commitSha=String(body.commitSha);
   } catch {}
 
+  const server=await selectDeploymentServer();
+  if(!server) return NextResponse.json({error:"No healthy deployment server currently has enough capacity."},{status:503});
+
   const deployment=await prisma.deployment.create({
-    data:{projectId:project.id,commitSha,status:"QUEUED"}
+    data:{projectId:project.id,commitSha,status:"QUEUED",serverId:server.id}
   });
   await prisma.project.update({where:{id:project.id},data:{status:"BUILDING"}});
   await deploymentQueue.add("deploy",{
@@ -26,6 +30,8 @@ export async function POST(request: Request, {params}:{params:Promise<{id:string
     repositoryUrl:project.repositoryUrl,
     repositoryBranch:project.repositoryBranch,
     commitSha:commitSha ?? null,
+    serverId:server.id,
+    serverHostname:server.hostname,
   },{removeOnComplete:100,removeOnFail:1000});
 
   return NextResponse.json({deployment},{status:202});
