@@ -61,3 +61,30 @@ export async function recoverHealthyNodes(){
   await prisma.server.updateMany({where:{id:{in:recoverable.map(s=>s.id)}},data:{status:"ONLINE",drainReason:"NONE"}});
   return {recovered:recoverable.length,servers:recoverable.map(s=>s.name)};
 }
+
+export async function recoverStaleDeployments(){
+  const timeout=Number(process.env.DEPLOYMENT_HEARTBEAT_TIMEOUT_SECONDS??120);
+  const cutoff=new Date(Date.now()-timeout*1000);
+  const stale=await prisma.deployment.findMany({
+    where:{status:{in:["BUILDING","DEPLOYING"]},OR:[{heartbeatAt:null},{heartbeatAt:{lt:cutoff}}]},
+    include:{server:true,project:true}
+  });
+  let requeued=0,failed=0;
+  const servers:string[]=[];
+  for(const deployment of stale){
+    if(deployment.retryCount>=deployment.maxRetries){
+      await prisma.deployment.update({where:{id:deployment.id},data:{status:"FAILED",finishedAt:new Date(),buildLog:"Deployment worker heartbeat timed out after retry limit."} as never});
+      await prisma.project.updateMany({where:{id:deployment.projectId,status:"BUILDING"},data:{status:"FAILED"}});
+      failed++;
+      continue;
+    }
+    const server=await selectDeploymentServer();
+    if(!server) continue;
+    const claimed=await prisma.deployment.updateMany({
+      where:{id:deployment.id,status:{in:["BUILDING","DEPLOYING"]},retryCount:deployment.retryCount},
+      data:{status:"QUEUED",serverId:server.id,retryCount:{increment:1},heartbeatAt:null,startedAt:null,finishedAt:null}
+    });
+    if(claimed.count){requeued++;servers.push(server.name);}
+  }
+  return {requeued,failed,servers};
+}
