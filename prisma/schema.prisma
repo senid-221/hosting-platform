@@ -113,7 +113,12 @@ model Deployment {
   runtimeLog String?
   startedAt DateTime?
   finishedAt DateTime?
+  heartbeatAt DateTime?
+  retryCount Int @default(0)
+  maxRetries Int @default(2)
   createdAt DateTime @default(now())
+  @@index([status,createdAt])
+  @@index([serverId,status])
 }
 model EnvironmentVariable {
   id String @id @default(cuid())
