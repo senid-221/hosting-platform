@@ -10,6 +10,7 @@ enum PaymentStatus { PENDING SUCCEEDED FAILED CANCELED }
 enum UsageMetricType { STORAGE BANDWIDTH DATABASES WEBSITES EMAIL }
 enum ServerStatus { ONLINE OFFLINE DRAINING MAINTENANCE }
 enum ServerHealth { UNKNOWN HEALTHY DEGRADED UNHEALTHY }
+enum ServerDrainReason { NONE AUTO_HEALTH ADMIN }
 
 model User {
   id String @id @default(cuid())
@@ -186,6 +187,7 @@ model Server {
   active Boolean @default(true)
   status ServerStatus @default(ONLINE)
   health ServerHealth @default(UNKNOWN)
+  drainReason ServerDrainReason @default(NONE)
   lastHeartbeatAt DateTime?
   cpuUsedPercent Float @default(0)
   memoryUsedGb Float @default(0)
