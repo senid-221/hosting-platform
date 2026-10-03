@@ -1,5 +1,18 @@
-export default function Admin() {
-  const stats=[["Customers","1,248"],["Websites","842"],["Running apps","721"],["Deployments","4,891"]];
+import { redirect } from "next/navigation";
+import { getCurrentUser } from "@/lib/auth";
+import { prisma } from "@/lib/prisma";
+
+export default async function Admin() {
+  const user = await getCurrentUser();
+  if (!user) redirect("/login");
+  if (user.role !== "ADMIN") redirect("/dashboard");
+  const [customers, websites, runningApps, deployments] = await Promise.all([
+    prisma.user.count({ where: { role: "CUSTOMER" } }),
+    prisma.project.count(),
+    prisma.project.count({ where: { status: "RUNNING" } }),
+    prisma.deployment.count(),
+  ]);
+  const stats=[["Customers",String(customers)],["Websites",String(websites)],["Running apps",String(runningApps)],["Deployments",String(deployments)]];
   return <main className="admin"><header><div className="brand"><span className="brand-mark">H</span><span>Hosting Platform Admin</span></div><span>System status: <b>Operational</b></span></header><div className="admin-main"><p className="eyebrow">ADMINISTRATION</p><h1>Platform overview</h1><div className="stats">{stats.map(([a,b])=><div className="stat" key={a}><span>{a}</span><strong>{b}</strong></div>)}</div><div className="admin-grid"><section><h2>Infrastructure</h2><div className="table"><div className="thead"><span>Server</span><span>Region</span><span>CPU</span><span>Status</span></div>{[["server-01","Africa","31%","Healthy"],["server-02","Europe","56%","Healthy"],["server-03","Africa","22%","Healthy"]].map(r=><div className="tr" key={r[0]}>{r.map((x,i)=><span key={i}>{x}</span>)}</div>)}</div></section><section><h2>Recent activity</h2><div className="activity"><p>Deployment completed <b>my-project</b><small>2 minutes ago</small></p><p>New domain registered <b>example.com</b><small>15 minutes ago</small></p><p>Backup completed <b>server-01</b><small>1 hour ago</small></p></div></section></div></div><style jsx>{`
 .admin{min-height:100vh;background:#f7f7f8;color:#222}.admin header{height:68px;background:#fff;border-bottom:1px solid #e8e8e8;padding:0 34px;display:flex;align-items:center;justify-content:space-between;font-size:12px;color:#777}.brand{display:flex;gap:10px;align-items:center;font-weight:750;color:#222}.brand-mark{display:grid;place-items:center;width:30px;height:30px;border-radius:8px;background:#673de6;color:#fff}.admin header b{color:#29945b}.admin-main{padding:42px;max-width:1300px;margin:auto}.eyebrow{font-size:11px;color:#673de6;font-weight:800;letter-spacing:.12em}.admin h1{font-size:32px;letter-spacing:-.04em;margin:8px 0 28px}.stats{display:grid;grid-template-columns:repeat(4,1fr);gap:15px}.stat{background:#fff;border:1px solid #e5e5e7;border-radius:10px;padding:22px}.stat span{color:#777;font-size:12px}.stat strong{display:block;font-size:29px;margin-top:12px}.admin-grid{display:grid;grid-template-columns:1.5fr 1fr;gap:15px;margin-top:20px}.admin-grid section{background:#fff;border:1px solid #e5e5e7;border-radius:10px;padding:22px}.admin h2{font-size:15px;margin:0 0 18px}.table{font-size:12px}.thead,.tr{display:grid;grid-template-columns:1.5fr 1fr 1fr 1fr;gap:10px;padding:13px 8px;border-bottom:1px solid #eee}.thead{color:#999;font-size:10px;font-weight:800}.tr span:last-child{color:#29945b}.activity p{border-bottom:1px solid #eee;padding:12px 0;margin:0;font-size:12px}.activity b{display:block;margin-top:4px}.activity small{display:block;color:#999;margin-top:3px}@media(max-width:800px){.stats,.admin-grid{grid-template-columns:1fr 1fr}.admin-main{padding:25px 18px}}@media(max-width:520px){.stats,.admin-grid{grid-template-columns:1fr}.admin header{padding:0 18px}.admin header>span{display:none}}
     `}</style></main>
