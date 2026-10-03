@@ -27,7 +27,7 @@ export async function POST(request: Request, {params}:{params:Promise<{id:string
   if(!server) return NextResponse.json({error:"No healthy deployment server currently has enough capacity."},{status:503});
 
   const deployment=await prisma.deployment.create({
-    data:{projectId:project.id,commitSha,status:"QUEUED",serverId:server.id}
+    data:{projectId:project.id,commitSha,status:"QUEUED",serverId:server.id,maxRetries:Math.max(0,Math.floor(Number(process.env.DEPLOYMENT_MAX_RETRIES??2)))}
   });
   await prisma.project.update({where:{id:project.id},data:{status:"BUILDING"}});
   await deploymentQueue.add("deploy",{
