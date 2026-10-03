@@ -58,6 +58,7 @@ model Project {
   domains Domain[]
   files FileNode[]
   backups Backup[]
+  runtimeCommands RuntimeCommand[]
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 }
@@ -68,6 +69,8 @@ model RuntimeCommand {
   id String @id @default(cuid())
   projectId String
   project Project @relation(fields:[projectId], references:[id], onDelete:Cascade)
+  serverId String?
+  server Server? @relation(fields:[serverId], references:[id], onDelete:SetNull)
   type RuntimeCommandType
   status RuntimeCommandStatus @default(QUEUED)
   output String?
@@ -174,6 +177,7 @@ model Server {
   agentTokenHash String?
   agentVersion String?
   deployments Deployment[]
+  runtimeCommands RuntimeCommand[]
 }
 
 enum DatabaseEngine { POSTGRESQL MYSQL REDIS }
