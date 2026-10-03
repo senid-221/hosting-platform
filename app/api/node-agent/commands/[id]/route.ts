@@ -23,9 +23,11 @@ export async function POST(request:Request,{params}:{params:Promise<{id:string}>
   });
 
   if(status==="SUCCEEDED"){
+    await prisma.runtimeEvent.create({data:{projectId:command.projectId,serverId:server.id,type:command.autoHeal?"AUTO_HEAL_SUCCEEDED":command.type==="RESTART"?"MANUAL_RESTART":"MANUAL_STOP",message:command.autoHeal?`Automatic restart attempt ${command.attempt} succeeded.`:`Runtime ${command.type.toLowerCase()} completed.`}});
     if(command.type==="RESTART")await prisma.project.update({where:{id:command.projectId},data:{status:"RUNNING"}});
     if(command.type==="STOP")await prisma.project.update({where:{id:command.projectId},data:{status:"STOPPED",runtimeContainer:null,runtimePort:null}});
   }else{
+    await prisma.runtimeEvent.create({data:{projectId:command.projectId,serverId:server.id,type:command.autoHeal?"AUTO_HEAL_FAILED":"HEALTH_FAILURE",message:command.autoHeal?`Automatic restart attempt ${command.attempt} failed.`:`Runtime command ${command.type.toLowerCase()} failed.`}});
     await prisma.project.update({where:{id:command.projectId},data:{status:"FAILED"}});
     if(command.autoHeal && command.attempt < command.maxAttempts){
       await prisma.runtimeCommand.create({
