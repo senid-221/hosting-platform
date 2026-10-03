@@ -3,7 +3,7 @@ import {useEffect,useState} from "react";
 
 export default function ProjectControl({params}:{params:Promise<{id:string}>}){
   const[id,setId]=useState("");const[p,setP]=useState<any>(null);const[tab,setTab]=useState("overview");
-  const[key,setKey]=useState("");const[value,setValue]=useState("");const[busy,setBusy]=useState(false);const[msg,setMsg]=useState("");const[detail,setDetail]=useState<any>(null);const[commands,setCommands]=useState<any[]>([]);
+  const[key,setKey]=useState("");const[value,setValue]=useState("");const[events,setEvents]=useState<any[]>([]);const[busy,setBusy]=useState(false);const[msg,setMsg]=useState("");const[detail,setDetail]=useState<any>(null);const[commands,setCommands]=useState<any[]>([]);
 
   useEffect(()=>{params.then(x=>setId(x.id))},[params]);
   useEffect(()=>{if(id)load()},[id]);
@@ -15,7 +15,7 @@ export default function ProjectControl({params}:{params:Promise<{id:string}>}){
       setP(x.project);
       const latest=x.project.deployments?.[0];
       if(latest){const dr=await fetch("/api/deployments/"+latest.id);const dx=await dr.json();if(dr.ok)setDetail(dx.deployment)}
-      const cr=await fetch("/api/projects/"+id+"/runtime");const cx=await cr.json();if(cr.ok)setCommands(cx.commands||[]);
+      const cr=await fetch("/api/projects/"+id+"/runtime");const cx=await cr.json();if(cr.ok){setCommands(cx.commands||[]);setEvents(cx.events||[]);}
     }
   }
 
@@ -67,7 +67,7 @@ export default function ProjectControl({params}:{params:Promise<{id:string}>}){
       <article className="control-card"><small>ENVIRONMENT</small><h3>{p.environmentVariables?.length||0}</h3><p>Configured variables</p></article>
       <article className="control-card"><small>BACKUPS</small><h3>{p.backups?.length||0}</h3><p>Recent records</p></article>
     </section>
-    <section className="service-card-panel control-section"><b>Runtime recovery</b><p className="muted">Restart or stop the current container without rebuilding the application. If the runtime fails health checks, the node reports the project as failed so it can be redeployed.</p><div className="project-actions">
+    <section className="service-card-panel control-section"><div className="live-log-head"><div><b>Runtime activity</b><span>Health and recovery events</span></div></div>{events.slice(0,8).map((e:any)=><div className="service-row" key={e.id}><div><b>{e.type.replaceAll("_"," ")}</b><span>{new Date(e.createdAt).toLocaleString()}</span></div><strong>{e.server?.name||"node"}</strong><span>{e.message}</span></div>)}{!events.length&&<div className="empty-state">No runtime events yet.</div>}</section>\n    <section className="service-card-panel control-section"><b>Runtime recovery</b><p className="muted">Restart or stop the current container without rebuilding the application. If the runtime fails health checks, the node reports the project as failed so it can be redeployed.</p><div className="project-actions">
       {(running||failed)&&<button className="secondary-button" onClick={()=>runtimeAction("RESTART")} disabled={busy||!!activeCommand}>Restart runtime</button>}
       {running&&<button className="secondary-button" onClick={()=>runtimeAction("STOP")} disabled={busy||!!activeCommand}>Stop runtime</button>}
       {(stopped||failed)&&<button className="button" onClick={deploy} disabled={busy}>{failed?"Redeploy":"Start deployment"}</button>}
