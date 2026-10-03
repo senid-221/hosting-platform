@@ -5,15 +5,21 @@ export async function selectDeploymentServer(){
   const cutoff=new Date(Date.now()-staleSeconds*1000);
   const servers=await prisma.server.findMany({
     where:{active:true,status:"ONLINE",health:{in:["HEALTHY","DEGRADED"]},lastHeartbeatAt:{gte:cutoff}},
-    include:{_count:{select:{deployments:true}}},
     orderBy:[{health:"asc"},{cpuUsedPercent:"asc"},{memoryUsedGb:"asc"},{storageUsedGb:"asc"}]
   });
   const maxCpu=Number(process.env.SCHEDULER_MAX_CPU_PERCENT??85);
   const maxMemory=Number(process.env.SCHEDULER_MAX_MEMORY_PERCENT??0.85);
   const maxStorage=Number(process.env.SCHEDULER_MAX_STORAGE_PERCENT??0.85);
 
+  const activeCounts=await prisma.deployment.groupBy({
+    by:["serverId"],
+    where:{serverId:{in:servers.map(s=>s.id)},status:{in:["QUEUED","BUILDING","DEPLOYING"]}},
+    _count:{_all:true}
+  });
+  const activeByServer=new Map(activeCounts.map(row=>[row.serverId,row._count._all]));
+
   return servers.find(s=>{
-    const activeDeployments=s._count.deployments;
+    const activeDeployments=activeByServer.get(s.id)??0;
     const cpuAvailable=s.cpuUsedPercent+s.reservedCpuPercent<maxCpu;
     const memoryAvailable=s.memoryUsedGb+s.reservedMemoryGb<s.memoryGb*maxMemory;
     const storageAvailable=s.storageUsedGb+s.reservedStorageGb<s.storageGb*maxStorage;
