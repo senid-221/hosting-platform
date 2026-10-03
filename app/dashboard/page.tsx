@@ -1,3 +1,6 @@
+import { redirect } from "next/navigation";
+import { getCurrentUser } from "@/lib/auth";
+
 const services = [
   ["Websites","4","Online websites"],
   ["Domains","7","Managed domains"],
@@ -5,7 +8,7 @@ const services = [
   ["Email","18","Mailboxes"],
 ];
 
-export default function Dashboard() {
+export default async function Dashboard() {\n  const user = await getCurrentUser();\n  if (!user) redirect("/login");
   return <main className="dashboard">
     <aside className="sidebar">
       <div className="brand"><span className="brand-mark">H</span><span>Hosting Platform</span></div>
@@ -14,7 +17,7 @@ export default function Dashboard() {
       <div className="side-group"><small>ACCOUNT</small><a>Billing</a><a>Support</a><a>Settings</a></div>
     </aside>
     <section className="dashboard-main">
-      <header className="dash-header"><div><span className="muted">Home</span><h1>Welcome back</h1></div><button>+ New website</button></header>
+      <header className="dash-header"><div><span className="muted">Home</span><h1>Welcome back{user.name ? `, ${user.name}` : ""}</h1></div><button>+ New website</button></header>
       <div className="notice"><div><b>Your hosting platform is ready.</b><span>Connect a domain or deploy your first application.</span></div><span>→</span></div>
       <div className="service-grid">{services.map(([name,value,text])=><div className="service-card" key={name}><span>{name}</span><strong>{value}</strong><small>{text}</small></div>)}</div>
       <div className="content-grid">
