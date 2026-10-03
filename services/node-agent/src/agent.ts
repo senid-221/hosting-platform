@@ -20,7 +20,7 @@ async function heartbeat(){
   if(!response.ok) throw new Error("Heartbeat failed: "+response.status);
 }
 
-async function poll(){
+async function commandPoll(){const response=await request("/api/node-agent/commands/next");if(response.status===204)return;if(!response.ok)throw new Error("Command poll failed: "+response.status);const body=await response.json();const command=body.command;if(!command)return;try{const action=command.type==="RESTART"?"restart":"stop";const {stdout,stderr}=await (await import("node:child_process")).execFileSync("docker",["container",action,command.runtimeContainer],{encoding:"utf8"});await request("/api/node-agent/commands/"+command.id,{method:"POST",body:JSON.stringify({status:"SUCCEEDED",output:String(stdout||"")+String(stderr||"")})});}catch(error){await request("/api/node-agent/commands/"+command.id,{method:"POST",body:JSON.stringify({status:"FAILED",errorMessage:error instanceof Error?error.message:String(error)})}).catch(()=>{});}}\n\nasync function poll(){
   const response=await request("/api/node-agent/deployments/next");
   if(response.status===204) return;
   if(!response.ok) throw new Error("Deployment poll failed: "+response.status);
@@ -32,7 +32,7 @@ async function main(){
   if(!TOKEN) throw new Error("NODE_AGENT_TOKEN is required");
   await heartbeat();
   setInterval(()=>heartbeat().catch(console.error),interval);
-  setInterval(()=>poll().catch(console.error),pollInterval);
+  setInterval(()=>poll().catch(console.error),pollInterval);setInterval(()=>commandPoll().catch(console.error),pollInterval);
   console.log("Hosting node agent with deployment execution is running.");
 }
 main().catch(error=>{console.error(error);process.exit(1)});
