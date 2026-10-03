@@ -8,7 +8,8 @@ const services = [
   ["Email","18","Mailboxes"],
 ];
 
-export default async function Dashboard() {\n  const user = await getCurrentUser();\n  if (!user) redirect("/login");
+export default async function Dashboard() {
+  const user = await getCurrentUser();\n  if (!user) redirect("/login");
   return <main className="dashboard">
     <aside className="sidebar">
       <div className="brand"><span className="brand-mark">H</span><span>Hosting Platform</span></div>
